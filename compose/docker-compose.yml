@@ -9,11 +9,11 @@
 #
 # PATHS: everything under ${DATA_ROOT} is ONE filesystem on the host:
 #
-#   ${DATA_ROOT:?set DATA_ROOT in .env}/books/audiobooks    the Audiobookshelf audiobook library
-#   ${DATA_ROOT:?set DATA_ROOT in .env}/books/ebooks        the ebook library (hardlinks of mam/)
-#   ${DATA_ROOT:?set DATA_ROOT in .env}/books/mam           MAM seeding dir (qbittorrent-mam)
-#   ${DATA_ROOT:?set DATA_ROOT in .env}/appdata/…           regenerable caches kept off the rootfs
-#   ${DATA_ROOT:?set DATA_ROOT in .env}/libation-staging    Libation's in-progress downloads
+#   ${DATA_ROOT}/books/audiobooks    the Audiobookshelf audiobook library
+#   ${DATA_ROOT}/books/ebooks        the ebook library (hardlinks of mam/)
+#   ${DATA_ROOT}/books/mam           MAM seeding dir (qbittorrent-mam)
+#   ${DATA_ROOT}/appdata/…           regenerable caches kept off the rootfs
+#   ${DATA_ROOT}/libation-staging    Libation's in-progress downloads
 #
 # The container-side paths (/audiobooks, /ebooks, /music/books, …) are the ones
 # the apps' databases store, and they are kept exactly as they were in landora.
