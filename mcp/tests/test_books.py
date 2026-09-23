@@ -1459,6 +1459,29 @@ def test_only_the_book_itself_matches_both_ways(title, is_book):
     assert books.release_is_this_book(title, *EOE_WANT) is is_book
 
 
+@pytest.mark.parametrize("release, title, author, is_book", [
+    # The real miss: every co-author inflated the reverse match until it failed.
+    ("The Phoenix Project by Gene Kim, Kevin Behr, George Spafford [ENG / EPUB MOBI]",
+     "The Phoenix Project", "Gene Kim", True),
+    # The requested author need not be listed first.
+    ("The Phoenix Project by Kevin Behr, Gene Kim, George Spafford [ENG / EPUB]",
+     "The Phoenix Project", "Gene Kim", True),
+    ("Good Omens by Neil Gaiman & Terry Pratchett [ENG / M4B]", "Good Omens", "Terry Pratchett", True),
+    ("Good Omens by Neil Gaiman and Terry Pratchett [ENG / M4B]", "Good Omens", "Neil Gaiman", True),
+    # "by" inside the title: only the author list is cut, not the title.
+    ("Stand by Me by Stephen King [ENG / M4B]", "Stand by Me", "Stephen King", True),
+    # Author-first shape has no "by": untouched, and still a match on the title.
+    ("Ernest Hemingway - A Farewell to Arms [John Slattery]", "A Farewell to Arms", "Ernest Hemingway", True),
+    # Same author, same shape, different book: "the" and "project" are not
+    # enough. Single-author releases had this hole before the co-author fix.
+    ("The Unicorn Project by Gene Kim, Kevin Behr [ENG / EPUB]", "The Phoenix Project", "Gene Kim", False),
+    ("The Unicorn Project by Gene Kim [ENG / EPUB]", "The Phoenix Project", "Gene Kim", False),
+    ("Of Mice and Men by John Steinbeck [ENG / M4B]", "Of Mice and Men", "John Steinbeck", True),
+])
+def test_a_co_author_list_does_not_defeat_the_match(release, title, author, is_book):
+    assert books.release_is_this_book(release, title, author) is is_book
+
+
 def test_a_crowded_bibliography_still_grabs_the_best_release(fake):
     """Every release advisory-rejected: ours picks the 1503 MB freeleech M4B."""
     _qbt(fake, [])
