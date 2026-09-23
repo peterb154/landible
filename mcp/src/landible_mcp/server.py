@@ -12,6 +12,7 @@ secret; reads are not.
 from __future__ import annotations
 
 import os
+import secrets
 from typing import Any
 from urllib.parse import quote
 
@@ -42,7 +43,7 @@ def _require_secret() -> None:
         return
     req = get_http_request()
     presented = req.headers.get("x-mcp-secret") or req.headers.get("X-MCP-Secret") or ""
-    if presented != MCP_SHARED_SECRET:
+    if not secrets.compare_digest(presented.encode(), MCP_SHARED_SECRET.encode()):
         raise PermissionError("write tools require a valid X-MCP-Secret header")
 
 
