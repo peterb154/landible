@@ -31,9 +31,9 @@ See [`.env.example`](.env.example).
 ## How a deploy happens
 
 ```
-git push to main
-  -> GitHub webhook -> n8n (verifies X-Hub-Signature-256)
-  -> POST /api/deploy with Authorization: Bearer DEPLOY_TOKEN
+merge to main
+  -> landible-autodeploy.timer (every 2 min): git fetch; if origin/main moved,
+     POST /api/deploy with Authorization: Bearer DEPLOY_TOKEN
        1. git fetch origin --prune
        2. git reset --hard origin/main          (the box is a pure mirror)
        3. docker compose pull
@@ -44,9 +44,10 @@ git push to main
             deferred systemctl restart landible-deploy (~2 s)
 ```
 
-n8n is just one option: anything that can verify GitHub's signature and send
-the POST works. The checkout needs a read-only deploy key; the shim only
-fetches and resets.
+Polling instead of a GitHub webhook: the repo is public, so the box can fetch
+anonymously and nothing needs a relay, a signature check or a credential. The
+price is up to two minutes of lag. Anything else that can send the POST (a
+webhook relay, a human with curl) still works.
 
 The deploy never touches systemd unit files. After a `.service`/`.timer`
 change, run `scripts/install-units.sh` on the host.

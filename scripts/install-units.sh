@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Install or refresh landible's systemd units. Safe to re-run.
 #
-# Copies mcp/systemd/*.service, mcp/systemd/*.timer and
-# deploy/landible-deploy.service into /etc/systemd/system, reloads systemd, then
+# Copies the .service/.timer files in mcp/systemd/ and deploy/ into
+# /etc/systemd/system, reloads systemd, then
 # enables + starts landible-mcp, landible-deploy and every landible-*.timer.
 # The deploy shim never touches units, so run this after a unit file changes.
 # A changed .service for an already-running daemon applies on its next restart.
@@ -12,7 +12,8 @@
 #   scripts/install-units.sh --services-only  # mcp + deploy only, no timers
 #
 # --services-only is for staging a box before cutover: the pollers must not run
-# while another box still owns the books (duplicate pushes, split state).
+# while another box still owns the books (duplicate pushes, split state), and
+# neither may auto-deploy, whose `compose up` would start the book containers.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -42,7 +43,7 @@ if [ "$DRY_RUN" = 0 ] && [ "$(id -u)" != 0 ]; then
 fi
 
 shopt -s nullglob
-units=("$REPO"/mcp/systemd/*.service "$REPO"/mcp/systemd/*.timer "$REPO"/deploy/landible-deploy.service)
+units=("$REPO"/mcp/systemd/*.service "$REPO"/mcp/systemd/*.timer "$REPO"/deploy/*.service "$REPO"/deploy/*.timer)
 timers=()
 
 for src in "${units[@]}"; do
