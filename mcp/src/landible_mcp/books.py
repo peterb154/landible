@@ -1537,7 +1537,10 @@ async def _abs_search_items(title: str, fmt: str | None = None) -> list[dict]:
     found = []
     for lib in await _abs_book_libraries(fmt):
         body = await _abs_get(f"/api/libraries/{lib['id']}/search", params={"q": title, "limit": 10})
-        found += [b.get("libraryItem") or {} for b in body.get("book") or []]
+        # A missing item (its files are gone, e.g. after a retract) is not in
+        # the library, however long ABS keeps showing it.
+        found += [i for b in body.get("book") or []
+                  if not (i := b.get("libraryItem") or {}).get("isMissing")]
     return found
 
 

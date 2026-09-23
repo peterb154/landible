@@ -2683,6 +2683,18 @@ def test_a_retracted_book_is_not_reported_as_in_the_library(fake):
     assert chaptarr.writes() == []
 
 
+def test_a_missing_library_item_does_not_count_as_in_the_library(fake):
+    """After a retract the files are gone but ABS can keep the item (isMissing),
+    and a re-request must not be refused as `in_library` because of it."""
+    fake("_abs", {
+        ("GET", "/api/libraries"): {"libraries": [{"id": "lib1", "name": "Ebooks", "mediaType": "book"}]},
+        ("GET", "/api/libraries/lib1/search"): {"book": [
+            {"libraryItem": {"isMissing": True, "media": {"metadata": {"title": "The Martian", "authorName": "Andy Weir"}}}},
+        ]},
+    })
+    assert asyncio.run(books._abs_search("The Martian")) == []
+
+
 def test_cancel_points_an_imported_book_at_retract(fake):
     _wrong_ebook()
     fake("_chaptarr", {("GET", "/api/v1/queue"): {"records": []}})
