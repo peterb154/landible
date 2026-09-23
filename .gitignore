@@ -1,0 +1,39 @@
+# Secrets
+.env
+*.env
+!.env.example
+!mcp/.env.example
+!deploy/.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+
+# macOS
+.DS_Store
+._*
+
+# ---- compose runtime (DBs, API keys, tokens — never commit) ----
+compose/audiobookshelf-data/
+# Libation: track only Settings.json (folder layout). AccountsSettings.json and
+# the master key hold Audible auth; libation-data/ holds the DB.
+compose/libation-config/*
+!compose/libation-config/Settings.json
+compose/libation-data/
+# qbittorrent-mam live config is qBt-owned; the tracked seed is qbittorrent-mam-seed/.
+compose/qbittorrent-mam-config/
+compose/chaptarr-config/
+compose/prowlarr-config/
+
+# ---- MCP + poller state (written at runtime) ----
+mcp/systemd/*.json
+mcp/systemd/*.json.tmp
+
+# ---- deploy shim state (webhook targets hold secret URLs) ----
+deploy/state/
+# compose reads ../.env through this symlink
+!compose/.env

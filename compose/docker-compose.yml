@@ -1,0 +1,286 @@
+# =============================================================================
+# Landible — Docker Compose (audiobooks + ebooks)
+# =============================================================================
+# Split out of the landora music stack. Runs in its own LXC; the host-specific
+# values (paths, passwords) come from ../.env (compose/.env is a symlink to it).
+#
+# Image tags are PINNED on purpose (never :latest). Bump deliberately after
+# reading the release notes.
+#
+# PATHS: everything under ${DATA_ROOT} is ONE filesystem on the host:
+#
+#   ${DATA_ROOT}/books/audiobooks    the Audiobookshelf audiobook library
+#   ${DATA_ROOT}/books/ebooks        the ebook library (hardlinks of mam/)
+#   ${DATA_ROOT}/books/mam           MAM seeding dir (qbittorrent-mam)
+#   ${DATA_ROOT}/appdata/…           regenerable caches kept off the rootfs
+#   ${DATA_ROOT}/libation-staging    Libation's in-progress downloads
+#
+# The container-side paths (/audiobooks, /ebooks, /music/books, …) are the ones
+# the apps' databases store, and they are kept exactly as they were in landora.
+# Changing a target path means rewriting Audiobookshelf libraries, Chaptarr root
+# folders and every qBittorrent save path. Change the source side only.
+# =============================================================================
+
+name: landible
+
+# Unrotated container logs once filled the shared rootfs and killed
+# Audiobookshelf mid-scan with ENOSPC. Every service uses this anchor.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ---------------------------------------------------------------------------
+  # Audiobookshelf — audiobook + ebook server, iPhone apps (offline, CarPlay).
+  # ---------------------------------------------------------------------------
+  audiobookshelf:
+    # PINNED. Verify https://github.com/advplyr/audiobookshelf/releases before bumping.
+    image: ghcr.io/advplyr/audiobookshelf:2.36.1
+    logging: *default-logging
+    container_name: audiobookshelf
+    restart: unless-stopped
+    # The image runs as root by default; run as ${PUID} so files it writes into
+    # the library stay owned by the same user as everything else.
+    user: "${PUID}:${PGID}"
+    ports:
+      - "13378:80"            # web UI + app API
+    environment:
+      - TZ=${TZ}
+    # create_host_path: false -> a missing dir fails the deploy loudly instead of
+    # Docker creating it root-owned (the ${PUID} user then can't write its DB and
+    # crash-loops). Create + chown them first: docs/runbook.md.
+    volumes:
+      - type: bind                                 # DB + settings (gitignored)
+        source: ./audiobookshelf-data/config
+        target: /config
+        bind: { create_host_path: false }
+      - type: bind                                 # covers, cache, ABS backups (gitignored)
+        source: ./audiobookshelf-data/metadata
+        target: /metadata
+        bind: { create_host_path: false }
+      - type: bind                                 # the library
+        source: ${DATA_ROOT}/books/audiobooks
+        target: /audiobooks
+        bind: { create_host_path: false }
+      # Read-only: ebooks share inodes with MAM seeding torrents, so ABS must
+      # never rewrite them. Send to Device only reads.
+      - type: bind
+        source: ${DATA_ROOT}/books/ebooks
+        target: /ebooks
+        read_only: true
+        bind: { create_host_path: false }
+    labels:
+      - "autoheal=true"
+    healthcheck:
+      # busybox wget is in the Alpine image (checked on 2.36.1).
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:80/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Libation — pulls the owner's Audible library, strips DRM, writes M4B
+  # (chapters + cover) into the ABS library, then sleeps SLEEP_TIME and rescans
+  # for new purchases. The Audible login is a one-time browser flow:
+  # docs/runbook.md. A crash exits the container and restart brings it back; the
+  # healthcheck catches the other failure, a hung scan.
+  # ---------------------------------------------------------------------------
+  libation:
+    # PINNED. Verify https://github.com/rmcrackan/Libation/releases before bumping.
+    image: rmcrackan/libation:14.2.2
+    logging: *default-logging
+    container_name: libation
+    restart: unless-stopped
+    # The image defaults to 1001; run as ${PUID} so books match ABS ownership.
+    user: "${PUID}:${PGID}"
+    environment:
+      - TZ=${TZ}
+      - SLEEP_TIME=6h          # the default (-1) runs once and exits
+    labels:
+      - "autoheal=true"
+    healthcheck:
+      # A LibationCli alive > 6 h is wedged. None running = healthy (it sleeps
+      # between scans). ps/awk verified in the 14.2.2 image. `$$` escapes
+      # compose interpolation.
+      test: >-
+        age=$$(ps -eo etimes=,args= | grep '[/]libation/LibationCli' | awk '{print $$1}' | sort -rn | head -n1);
+        [ -z "$$age" ] && exit 0;
+        [ "$$age" -lt 21600 ]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+      start_period: 1m
+    volumes:
+      - type: bind             # Settings.json tracked (folder layout); AccountsSettings.json gitignored
+        source: ./libation-config
+        target: /config
+        bind: { create_host_path: false }
+      - type: bind             # Libation DB (gitignored)
+        source: ./libation-data/db
+        target: /db
+        bind: { create_host_path: false }
+      - type: bind             # books land in the ABS library
+        source: ${DATA_ROOT}/books/audiobooks
+        target: /data
+        bind: { create_host_path: false }
+      # The entrypoint forces InProgress=/tmp. Keep those 1-2 GB-per-book
+      # staging files off the rootfs (it also holds /var/lib/docker).
+      - type: bind
+        source: ${DATA_ROOT}/libation-staging
+        target: /tmp
+        bind: { create_host_path: false }
+
+  # ---------------------------------------------------------------------------
+  # qbittorrent-mam — MyAnonamouse's client. MAM wants the HOME IP (rule 1.2),
+  # so this sits on the plain compose network: no VPN, ever. It must NEVER stop
+  # seeding (72 h per torrent or it's a hit & run), so the seed config has no
+  # share limits and queueing off. Runbook: docs/runbook.md.
+  # ---------------------------------------------------------------------------
+  qbittorrent-mam:
+    # PINNED, and MAM whitelists client versions (5.0.1-5.2.x allowed as of
+    # 2026-09-18). Check https://www.myanonamouse.net/tor/allowed_clients.php
+    # BEFORE bumping, or the tracker rejects it as "Unauthorized Client".
+    image: lscr.io/linuxserver/qbittorrent:5.2.3
+    logging: *default-logging
+    container_name: qbittorrent-mam
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8081
+      - TORRENTING_PORT=58123
+    ports:
+      - "8081:8081"             # WebUI, LAN only (never forwarded on the router)
+      - "58123:58123"           # BitTorrent TCP, port-forwarded on the router
+      - "58123:58123/udp"       # BitTorrent UDP (uTP)
+    volumes:
+      - type: bind              # live config, qBt-owned (gitignored); seeded once from qbittorrent-mam-seed/
+        source: ./qbittorrent-mam-config
+        target: /config
+        bind: { create_host_path: false }
+      - type: bind              # only the MAM dir, same path as Chaptarr sees it
+        source: ${DATA_ROOT}/books/mam
+        target: /music/books/mam
+        bind: { create_host_path: false }
+    labels:
+      - "autoheal=true"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8081/api/v2/app/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Chaptarr — the book grabber (Readarr fork). Searches MAM via Prowlarr
+  # (Torznab), grabs into qbittorrent-mam, HARDLINKS finished books into the
+  # library. Wiring lives in scripts/chaptarr_setup.py.
+  # ---------------------------------------------------------------------------
+  chaptarr:
+    # PINNED. All Chaptarr releases are pre-releases (beta); read
+    # https://github.com/Chaptarr/chaptarr/releases before bumping.
+    image: chaptarr/chaptarr:0.9.958
+    logging: *default-logging
+    container_name: chaptarr
+    restart: unless-stopped
+    # PUID/PGID env, not `user:`. Chaptarr's docs say `user:` bypasses the
+    # entrypoint's permission setup.
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - "8789:8789"             # web UI + API; forms auth set by scripts/chaptarr_setup.py
+    volumes:
+      - type: bind              # DB + config.xml (gitignored)
+        source: ./chaptarr-config
+        target: /config
+        bind: { create_host_path: false }
+      - type: bind              # ~4 GB of regenerable cover art, off the rootfs
+        source: ${DATA_ROOT}/appdata/chaptarr-mediacover
+        target: /config/MediaCover
+        bind: { create_host_path: false }
+      # ONE bind holding both the MAM seeding dir and the library: link() across
+      # two mounts fails with EXDEV and Chaptarr silently copies (2x disk).
+      # Don't split it.
+      - type: bind
+        source: ${DATA_ROOT}/books
+        target: /music/books
+        bind: { create_host_path: false }
+    labels:
+      - "autoheal=true"
+    healthcheck:
+      # Ubuntu-based image; wget is present (checked on 0.9.958).
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8789/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Prowlarr — holds the MAM indexer (entered by hand; it wants the mam_id
+  # cookie). Chaptarr reaches it as Torznab at http://prowlarr:9696. No app
+  # sync: nothing else should ever receive the MAM indexer.
+  # ---------------------------------------------------------------------------
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:2.5.2
+    logging: *default-logging
+    container_name: prowlarr
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ./prowlarr-config:/config
+    ports:
+      - "9696:9696"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9696/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  # FlareSolverr — headless-Chrome Cloudflare solver for Prowlarr. Internal
+  # only; Prowlarr reaches it at http://flaresolverr:8191.
+  # ---------------------------------------------------------------------------
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
+    logging: *default-logging
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+      - CAPTCHA_SOLVER=none
+      - TZ=${TZ}
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8191/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # autoheal — restarts any container Docker marks "unhealthy" (Docker's own
+  # restart policy ignores health). Scoped by label autoheal=true.
+  # ---------------------------------------------------------------------------
+  autoheal:
+    # PINNED. Verify https://github.com/willfarrell/docker-autoheal/releases before bumping.
+    image: willfarrell/autoheal:1.2.0
+    logging: *default-logging
+    container_name: autoheal
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+      - AUTOHEAL_START_PERIOD=300
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro

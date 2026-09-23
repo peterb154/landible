@@ -1,0 +1,4 @@
+{
+  "FolderTemplate": "<first author>/<if series-><first series>/<-if series><title short>",
+  "TokenStorageMethod": "Plaintext"
+}
