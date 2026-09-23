@@ -235,7 +235,7 @@ def _post_event(shim_url: str, secret: str, ev: dict) -> None:
     if isinstance(body, dict) and body.get("targets") == 0:
         raise NotDelivered(
             f"the shim relayed {body.get('event')!r} to 0 targets — "
-            "no webhook subscribes to it (PUT /api/webhooks/{name})"
+            "no webhook subscribes to it (landible_webhook_set)"
         )
 
 

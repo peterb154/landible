@@ -219,7 +219,7 @@ def delivered(response: object) -> None:
     if isinstance(response, dict) and response.get("targets") == 0:
         raise NotDelivered(
             f"the shim relayed {response.get('event')!r} to 0 targets — "
-            "no webhook subscribes to it (PUT /api/webhooks/{name})"
+            "no webhook subscribes to it (landible_webhook_set)"
         )
 
 

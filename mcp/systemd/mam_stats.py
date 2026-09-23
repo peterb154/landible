@@ -5,7 +5,7 @@ Run by landible-mam-stats.timer. No model in the loop.
 
 Calls GET /jsonLoad.php?snatch_summary (on MAM's approved-API list) from the
 home IP with the `mam_id` cookie, then writes mam-stats.json from an ALLOW-LIST
-of fields. The MCP's mam_stats tool and the weekly digest read that file; the
+of fields. landible_mam_stats (MCP) and the weekly digest read that file; the
 MCP never calls MAM and never sees the cookie.
 
 The cookie (invariant 3): a dedicated IP-locked session (e.g. `landible-stats`), NOT Prowlarr's, kept
@@ -204,7 +204,7 @@ def _post_event(shim_url: str, secret: str, ev: dict) -> None:
     if isinstance(body, dict) and body.get("targets") == 0:
         raise NotDelivered(
             f"the shim relayed {body.get('event')!r} to 0 targets — "
-            "no webhook subscribes to it (PUT /api/webhooks/{name})"
+            "no webhook subscribes to it (landible_webhook_set)"
         )
 
 
