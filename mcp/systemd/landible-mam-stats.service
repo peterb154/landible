@@ -1,0 +1,8 @@
+[Unit]
+Description=MAM account stats (jsonLoad.php -> mam-stats.json)
+After=network-online.target landible-deploy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/landible/mcp/systemd/landible-mam-stats.sh

@@ -1,0 +1,8 @@
+[Unit]
+Description=MAM account health (qbittorrent-mam checks -> deploy shim)
+After=network-online.target docker.service landible-deploy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/landible/mcp/systemd/landible-mam-health.sh

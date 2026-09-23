@@ -1,0 +1,8 @@
+[Unit]
+Description=Audiobook push events (ABS new items + Chaptarr failures -> deploy shim)
+After=network-online.target docker.service landible-deploy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/landible/mcp/systemd/landible-book-events.sh

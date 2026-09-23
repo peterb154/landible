@@ -1,0 +1,15 @@
+[Unit]
+Description=Weekly audiobook digest (ABS + Libation + qbittorrent-mam + MAM stats -> deploy shim)
+After=network-online.target docker.service landible-deploy.service
+Wants=network-online.target
+# A failed push (shim/HA briefly down) retries every 30 min instead of waiting a
+# week. Safe: the shim only fails (502) when NO target got it, so a retry can't
+# double-push. The burst limit stops a permanent failure after ~10 h.
+StartLimitIntervalSec=12h
+StartLimitBurst=20
+
+[Service]
+Type=oneshot
+ExecStart=/opt/landible/mcp/systemd/landible-book-digest.sh
+Restart=on-failure
+RestartSec=30min

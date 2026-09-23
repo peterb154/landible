@@ -1,0 +1,8 @@
+[Unit]
+Description=Failed systemd unit sweep (systemctl --failed -> deploy shim)
+After=network-online.target landible-deploy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/landible/mcp/systemd/landible-unit-health.sh
