@@ -1,0 +1,17 @@
+[Unit]
+Description=Landible MCP server (FastMCP tools for the audiobook + ebook stack)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Runs straight from the checkout. .env and .venv here are gitignored, so a
+# `git reset --hard` deploy leaves them untouched.
+WorkingDirectory=/opt/landible/mcp
+EnvironmentFile=/opt/landible/mcp/.env
+ExecStart=/root/.local/bin/uv run --frozen python -m landible_mcp
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
