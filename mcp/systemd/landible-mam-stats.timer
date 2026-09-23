@@ -1,0 +1,11 @@
+[Unit]
+Description=MAM account stats every hour
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=10min
+OnBootSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
