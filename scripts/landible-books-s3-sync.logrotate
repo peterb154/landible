@@ -1,0 +1,11 @@
+# Logrotate for the landible books S3 sync cron log on the Proxmox host.
+# Install to /etc/logrotate.d/landible-books-s3-sync (docs/runbook.md → Library backup).
+/var/log/landible-books-s3-sync.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
