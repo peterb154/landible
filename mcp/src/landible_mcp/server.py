@@ -81,6 +81,9 @@ Workflow for "get me <audiobook or ebook>":
   - landible_book_cancel stops tracking a request that will never finish. It
     never touches the torrent (a MAM torrent must keep seeding), so it does
     NOT free a MAM slot — say so when you relay it.
+  - landible_book_retract takes a WRONG import back out of the library (wrong
+    edition, wrong language, wrong book): blocklists the release, removes the
+    library copy, keeps the torrent seeding. Confirm first; it deletes a file.
   - landible_audiobooks answers "what audiobooks / ebooks do we have / what's new?".
   - landible_mam_stats answers "how is the MAM account doing / how close to VIP?".
 """,
@@ -294,6 +297,31 @@ async def landible_book_status(query: str | None = None) -> dict:
     # and deletes the library copy.
     _require_secret()
     return await books.status(query)
+
+
+@mcp.tool
+async def landible_book_retract(book_id: int, reason: str) -> dict:
+    """Take a WRONG book back out of the library. CONFIRM WITH THE USER FIRST — it deletes a file.
+
+    For an `imported` book that turned out to be the wrong thing: another
+    edition or language, an abridgement, a different book. Audiobooks are
+    checked automatically (their tags), ebooks are not, so this is mostly how a
+    wrong ebook gets undone.
+
+    It blocklists the release (so it is not grabbed again), unmonitors the
+    book in Chaptarr, deletes the library copy, and marks the ledger entry
+    `retracted` so landible_book_status stops calling it in the library. It
+    NEVER touches the torrent: the library copy is a hardlink, and the seeding
+    copy keeps seeding — removing it would be a hit & run.
+
+    `book_id` is from landible_book_status; `reason` is a short note of what was
+    wrong (e.g. "Greek edition"). To look for a better copy afterwards, request
+    it again. Returns {success, status, message}. `status`: `retracted`,
+    `not_found`, or `not_retractable` (not imported — use landible_book_cancel
+    for a request that never finished).
+    """
+    _require_secret()
+    return await books.retract(str(book_id), reason)
 
 
 @mcp.tool

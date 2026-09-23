@@ -139,7 +139,7 @@ def stuck_candidates(ledger: dict, done: set, failed_ids: set, now: datetime) ->
         except (KeyError, AttributeError, ValueError):
             continue
         if (now - requested < STUCK_AFTER or stuck_key(book_id, e) in done
-                or e.get("state") in ("failed", "imported", "cancelled")
+                or e.get("state") in ("failed", "imported", "cancelled", "retracted")
                 or int(book_id) in failed_ids):
             continue
         out.append((book_id, e))

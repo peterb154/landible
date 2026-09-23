@@ -812,6 +812,7 @@ _SUMMARY = {
     "imported": "In the library (Audiobookshelf).",
     "failed": "Failed: {reason}.",
     "cancelled": "Cancelled: {reason}. The torrent is still seeding, as MAM requires.",
+    "retracted": "Retracted (not in the library): {reason}.",
 }
 
 
@@ -1283,7 +1284,7 @@ async def cancel(book_id: str) -> dict:
             "success": False, "status": "not_cancellable", "book_id": int(book_id),
             "message": (
                 f"{entry.get('title')} is {entry['state']}, so there is nothing to cancel. "
-                "An imported book is removed from the library by hand, not here."
+                "A wrong imported book is taken out with landible_book_retract."
             ),
         }
 
@@ -1310,6 +1311,69 @@ async def cancel(book_id: str) -> dict:
             f"Cancelled {entry.get('title')}.{seeding} The torrent keeps seeding — removing it "
             "would be a hit & run. This does NOT give the MAM slot back: the grab already "
             "counted against the unsatisfied cap and only 72 h of seeding clears it."
+        ),
+    }
+
+
+async def retract(book_id: str, reason: str) -> dict:
+    """Take a wrong import back out of the library. Never touches the torrent.
+
+    The manual version of what `_verify` does on a `mismatch` — needed because
+    that check reads audio tags, so a wrong EBOOK (a Greek edition, say) is
+    never caught and the ledger goes on calling it `imported`. Order matters:
+    blocklist first so the same release is not grabbed again, then record, then
+    delete the library copy — a hardlink, so the seeding copy is untouched.
+    Deleting the torrent instead is the obvious manual cleanup, and it is a
+    hit & run; that is why this is a tool and not advice.
+    """
+    book_ledger = ledger.load(BOOK_LEDGER)
+    entry = book_ledger.get(str(book_id))
+    if entry is None:
+        return {"success": False, "status": "not_found",
+                "message": f"No request in the ledger for book {book_id}. landible_book_status lists them."}
+    if entry.get("state") != "imported":
+        return {
+            "success": False, "status": "not_retractable", "book_id": int(book_id),
+            "message": (
+                f"{entry.get('title')} is {entry.get('state')}, not imported. Retract is for a "
+                "wrong book that reached the library; use landible_book_cancel for a request "
+                "that never finished."
+            ),
+        }
+
+    # The grab may have aged out of Chaptarr's history (404): the release then
+    # can't be blocklisted, which is worth saying, not worth failing over.
+    blocklisted = False
+    if entry.get("grab_history_id"):
+        try:
+            await _chaptarr_call("POST", f"/api/v1/history/failed/{entry['grab_history_id']}")
+            blocklisted = True
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code != 404:
+                raise
+    # Unmonitored, so nothing re-grabs it on its own; a new request monitors it again.
+    await _chaptarr_call("PUT", "/api/v1/book/monitor",
+                         json={"bookIds": [int(book_id)], "monitored": False})
+
+    blocklist = ("release blocklisted" if blocklisted else
+                 "release NOT blocklisted (its grab has aged out of Chaptarr's history)")
+    _record(book_id, {"state": "retracted",
+                      "reason": f"{reason}; {blocklist}, library copy removed, torrent still seeding"})
+    removed = False
+    if entry.get("file_id"):
+        r = await _chaptarr.delete(f"/api/v1/bookfile/{entry['file_id']}")
+        if r.status_code != 404:   # 404: already gone
+            r.raise_for_status()
+        removed = r.status_code != 404
+    copy = ("Removed the library copy." if removed else
+            "Chaptarr had no library file on record for it, so nothing was deleted; "
+            "check the library by hand.")
+    return {
+        "success": True, "status": "retracted", "book_id": int(book_id),
+        "message": (
+            f"Retracted {entry.get('title')} ({entry.get('format') or 'audiobook'}): "
+            f"{blocklist}. {copy} The torrent keeps seeding — removing it would be a "
+            "hit & run. Request it again to look for a better release."
         ),
     }
 
@@ -1473,7 +1537,10 @@ async def _abs_search_items(title: str, fmt: str | None = None) -> list[dict]:
     found = []
     for lib in await _abs_book_libraries(fmt):
         body = await _abs_get(f"/api/libraries/{lib['id']}/search", params={"q": title, "limit": 10})
-        found += [b.get("libraryItem") or {} for b in body.get("book") or []]
+        # A missing item (its files are gone, e.g. after a retract) is not in
+        # the library, however long ABS keeps showing it.
+        found += [i for b in body.get("book") or []
+                  if not (i := b.get("libraryItem") or {}).get("isMissing")]
     return found
 
 
