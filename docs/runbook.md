@@ -32,6 +32,12 @@ databases store those paths, so only the host side of a bind ever changes.
 Where this doc says `/music/books/...` it means the path *inside* a container;
 on the host that is `${DATA_ROOT}/books/...`.
 
+**Keep `DATA_ROOT=/music`.** `landible-mcp` and the pollers run natively on
+the LXC, not in Docker, and open Chaptarr's paths (`/music/books/...`)
+directly: EPUB cover fixes, the inode search for a book's seeding folder, the
+MAM health check. With `DATA_ROOT=/music` one path means the same file
+everywhere — LXC, containers and databases.
+
 Chaptarr mounts `${DATA_ROOT}/books` as **one** bind at `/music/books`:
 hardlinks need the seeding dir and the library in the same mount.
 
