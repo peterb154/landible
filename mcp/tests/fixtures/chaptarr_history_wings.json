@@ -1,0 +1,151 @@
+{
+  "page": 1,
+  "pageSize": 20,
+  "sortKey": "date",
+  "sortDirection": "descending",
+  "totalRecords": 4,
+  "records": [
+    {
+      "bookId": 17623,
+      "authorId": 108,
+      "sourceTitle": "Wings of War: The World War II Fighter Plane That Saved the Allies and the Believers Who Made It Fly by David Fairbank White, Margaret Stanback White [ENG / M4B]",
+      "quality": {
+        "quality": {
+          "id": 12,
+          "name": "M4B",
+          "isConversionTarget": true
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "qualityCutoffNotMet": false,
+      "date": "2026-09-18T23:03:21Z",
+      "downloadId": "DEADBEEFDEADBEEFDEADBEEFDEADBEEF00000005",
+      "eventType": "downloadFailed",
+      "data": {
+        "downloadClient": "qBittorrent",
+        "downloadClientName": null,
+        "message": "Manually marked as failed",
+        "releaseGroup": null,
+        "size": "650955980",
+        "indexer": "MAM (via Prowlarr)"
+      },
+      "id": 9
+    },
+    {
+      "bookId": 17623,
+      "authorId": 108,
+      "sourceTitle": "/music/books/audiobooks/David White/Wings of War/Wings of War Great Combat Tales of Allied and Axis Pilots During World War II.m4b",
+      "quality": {
+        "quality": {
+          "id": 12,
+          "name": "M4B",
+          "isConversionTarget": true
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "qualityCutoffNotMet": false,
+      "date": "2026-09-18T23:03:08Z",
+      "eventType": "bookFileDeleted",
+      "data": {
+        "reason": "MissingFromDisk",
+        "releaseGroup": null,
+        "indexerFlags": "0"
+      },
+      "id": 8
+    },
+    {
+      "bookId": 17623,
+      "authorId": 108,
+      "sourceTitle": "Wings of War: The World War II Fighter Plane That Saved the Allies and the Believers Who Made It Fly by David Fairbank White, Margaret Stanback White [ENG / M4B]",
+      "quality": {
+        "quality": {
+          "id": 12,
+          "name": "M4B",
+          "isConversionTarget": true
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "qualityCutoffNotMet": false,
+      "date": "2026-09-18T19:24:14Z",
+      "downloadId": "DEADBEEFDEADBEEFDEADBEEFDEADBEEF00000005",
+      "eventType": "bookFileImported",
+      "data": {
+        "fileId": "311",
+        "droppedPath": "/music/books/mam/James P. Busha, Steve Hinton - foreword - Wings of War/Wings of War Great Combat Tales of Allied and Axis Pilots During World War II.m4b",
+        "importedPath": "/music/books/audiobooks/David White/Wings of War/Wings of War Great Combat Tales of Allied and Axis Pilots During World War II.m4b",
+        "downloadClient": "qBittorrent",
+        "downloadClientName": "qbittorrent-mam",
+        "releaseGroup": null,
+        "customFormatScore": "0",
+        "size": "569196240",
+        "indexerFlags": "0"
+      },
+      "id": 7
+    },
+    {
+      "bookId": 17623,
+      "authorId": 108,
+      "sourceTitle": "Wings of War: The World War II Fighter Plane That Saved the Allies and the Believers Who Made It Fly by David Fairbank White, Margaret Stanback White [ENG / M4B]",
+      "quality": {
+        "quality": {
+          "id": 12,
+          "name": "M4B",
+          "isConversionTarget": true
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "qualityCutoffNotMet": false,
+      "date": "2026-09-18T19:22:47Z",
+      "downloadId": "DEADBEEFDEADBEEFDEADBEEFDEADBEEF00000005",
+      "eventType": "grabbed",
+      "data": {
+        "indexer": "MAM (via Prowlarr)",
+        "nzbInfoUrl": "https://www.myanonamouse.net/t/100012",
+        "releaseGroup": null,
+        "age": "1272",
+        "ageHours": "30551.322748878694",
+        "ageMinutes": "1833079.3649329867",
+        "publishedDate": "2023-03-25T20:03:26Z",
+        "downloadClient": "qBittorrent",
+        "downloadClientName": "qbittorrent-mam",
+        "size": "650955980",
+        "downloadUrl": "http://prowlarr:9696/1/download?apikey=REDACTED&link=REDACTED",
+        "guid": "https://www.myanonamouse.net/t/100012",
+        "protocol": "2",
+        "downloadForced": "True",
+        "customFormatScore": "0",
+        "releaseSource": "InteractiveSearch",
+        "indexerFlags": "0",
+        "torrentInfoHash": "DEADBEEFDEADBEEFDEADBEEFDEADBEEF00000005",
+        "isGraphicAudio": "False",
+        "seeders": "5",
+        "peers": "5"
+      },
+      "id": 6
+    }
+  ]
+}

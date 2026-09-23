@@ -1,0 +1,446 @@
+{
+  "filterSummary": {
+    "bypassMode": false,
+    "displayedCount": 0,
+    "filterBreakdown": {
+      "matching": 6,
+      "release Profile": 1
+    },
+    "filterWarnings": [
+      "6 results hidden because author/book identity or release contents could not be safely resolved"
+    ],
+    "filteredCategories": [
+      "Matching",
+      "Release Profile"
+    ],
+    "filteredCount": 6,
+    "hardFilteredCount": 6,
+    "hasHardFilters": true,
+    "hasSoftFilters": false,
+    "softFilteredCount": 0,
+    "summaryText": "Showing 0 of 6 results (6 filtered)",
+    "totalResults": 6
+  },
+  "hiddenReleases": [
+    {
+      "age": 6257,
+      "ageHours": 150177.54585606954,
+      "ageMinutes": 9010652.751364172,
+      "approved": false,
+      "authorId": 31,
+      "authorName": "John Steinbeck",
+      "autoPickReasons": [],
+      "bookId": 9250,
+      "bookTitle": "East of Eden",
+      "canBypassFilters": false,
+      "commentUrl": "<redacted: carried a Prowlarr apikey>",
+      "customFormatScore": 0,
+      "customFormats": [],
+      "discography": false,
+      "displayTitle": "East of Eden by John Steinbeck [ENG / ]",
+      "downloadAllowed": false,
+      "downloadUrl": "<redacted: carried a Prowlarr apikey>",
+      "formatType": "audiobook",
+      "guid": "https://www.myanonamouse.net/t/100005",
+      "hasHardFilters": true,
+      "hasSoftFilters": false,
+      "indexer": "MAM (via Prowlarr)",
+      "indexerFlags": 0,
+      "indexerId": 1,
+      "infoUrl": "<redacted: carried a Prowlarr apikey>",
+      "isGraphicAudio": false,
+      "isMultiFormat": false,
+      "isPreferredChoice": false,
+      "leechers": 0,
+      "magnetUrl": "<redacted: carried a Prowlarr apikey>",
+      "protocol": "torrent",
+      "publishDate": "2009-08-04T11:05:35Z",
+      "quality": {
+        "quality": {
+          "id": 10,
+          "isConversionTarget": false,
+          "name": "MP3"
+        },
+        "revision": {
+          "isRepack": false,
+          "real": 0,
+          "version": 1
+        }
+      },
+      "qualityWeight": 201,
+      "rank": 1,
+      "rejected": true,
+      "rejectionDetails": [
+        {
+          "canBypass": false,
+          "category": "Matching",
+          "reason": "Release appears to match a different book by this author",
+          "severity": 3,
+          "type": "Permanent"
+        }
+      ],
+      "rejections": [
+        "Release appears to match a different book by this author"
+      ],
+      "releaseHash": "",
+      "releaseWeight": 0,
+      "sceneSource": false,
+      "seeders": 501,
+      "size": 735680921,
+      "temporarilyRejected": false,
+      "title": "East of Eden by John Steinbeck [ENG / MP3]"
+    },
+    {
+      "age": 4281,
+      "ageHours": 102762.24446718939,
+      "ageMinutes": 6165734.668031365,
+      "approved": false,
+      "authorId": 31,
+      "authorName": "John Steinbeck",
+      "autoPickReasons": [],
+      "bookId": 9250,
+      "bookTitle": "BBC R4 CS - East Of Eden",
+      "canBypassFilters": false,
+      "commentUrl": "<redacted: carried a Prowlarr apikey>",
+      "customFormatScore": 0,
+      "customFormats": [],
+      "discography": false,
+      "displayTitle": "BBC R4 CS - East Of Eden by John Steinbeck [ENG / ] [VIP]",
+      "downloadAllowed": false,
+      "downloadUrl": "<redacted: carried a Prowlarr apikey>",
+      "formatType": "audiobook",
+      "guid": "https://www.myanonamouse.net/t/100006",
+      "hasHardFilters": true,
+      "hasSoftFilters": true,
+      "indexer": "MAM (via Prowlarr)",
+      "indexerFlags": 0,
+      "indexerId": 1,
+      "infoUrl": "<redacted: carried a Prowlarr apikey>",
+      "isGraphicAudio": false,
+      "isMultiFormat": false,
+      "isPreferredChoice": false,
+      "leechers": 0,
+      "magnetUrl": "<redacted: carried a Prowlarr apikey>",
+      "protocol": "torrent",
+      "publishDate": "2015-01-01T02:23:40Z",
+      "quality": {
+        "quality": {
+          "id": 10,
+          "isConversionTarget": false,
+          "name": "MP3"
+        },
+        "revision": {
+          "isRepack": false,
+          "real": 0,
+          "version": 1
+        }
+      },
+      "qualityWeight": 201,
+      "rank": 2,
+      "rejected": true,
+      "rejectionDetails": [
+        {
+          "canBypass": true,
+          "category": "Release Profile",
+          "reason": "Contains these ignored terms: [VIP]",
+          "severity": 2,
+          "type": "Permanent"
+        },
+        {
+          "canBypass": false,
+          "category": "Matching",
+          "reason": "Release appears to match a different book by this author",
+          "severity": 3,
+          "type": "Permanent"
+        }
+      ],
+      "rejections": [
+        "Contains these ignored terms: [VIP]",
+        "Release appears to match a different book by this author"
+      ],
+      "releaseHash": "",
+      "releaseWeight": 1,
+      "sceneSource": false,
+      "seeders": 17,
+      "size": 165570150,
+      "temporarilyRejected": false,
+      "title": "BBC R4 CS - East Of Eden by John Steinbeck [ENG / MP3] [VIP]"
+    },
+    {
+      "age": 590,
+      "ageHours": 14182.98946720064,
+      "ageMinutes": 850979.3680320383,
+      "approved": false,
+      "authorId": 31,
+      "authorName": "John Steinbeck",
+      "autoPickReasons": [],
+      "bookId": 9250,
+      "bookTitle": "East of Eden",
+      "canBypassFilters": false,
+      "commentUrl": "<redacted: carried a Prowlarr apikey>",
+      "customFormatScore": 0,
+      "customFormats": [],
+      "discography": false,
+      "displayTitle": "East of Eden by John Steinbeck [ENG / ]",
+      "downloadAllowed": false,
+      "downloadUrl": "<redacted: carried a Prowlarr apikey>",
+      "formatType": "audiobook",
+      "guid": "https://www.myanonamouse.net/t/100003",
+      "hasHardFilters": true,
+      "hasSoftFilters": false,
+      "indexer": "MAM (via Prowlarr)",
+      "indexerFlags": 0,
+      "indexerId": 1,
+      "infoUrl": "<redacted: carried a Prowlarr apikey>",
+      "isGraphicAudio": false,
+      "isMultiFormat": false,
+      "isPreferredChoice": false,
+      "leechers": 1,
+      "magnetUrl": "<redacted: carried a Prowlarr apikey>",
+      "protocol": "torrent",
+      "publishDate": "2025-02-07T21:38:58Z",
+      "quality": {
+        "quality": {
+          "id": 12,
+          "isConversionTarget": true,
+          "name": "M4B"
+        },
+        "revision": {
+          "isRepack": false,
+          "real": 0,
+          "version": 1
+        }
+      },
+      "qualityWeight": 301,
+      "rank": 3,
+      "rejected": true,
+      "rejectionDetails": [
+        {
+          "canBypass": false,
+          "category": "Matching",
+          "reason": "Release appears to match a different book by this author",
+          "severity": 3,
+          "type": "Permanent"
+        }
+      ],
+      "rejections": [
+        "Release appears to match a different book by this author"
+      ],
+      "releaseHash": "",
+      "releaseWeight": 2,
+      "sceneSource": false,
+      "seeders": 183,
+      "size": 775526809,
+      "temporarilyRejected": false,
+      "title": "East of Eden by John Steinbeck [ENG / M4B]"
+    },
+    {
+      "age": 1852,
+      "ageHours": 44471.84780053775,
+      "ageMinutes": 2668310.868032265,
+      "approved": false,
+      "authorId": 31,
+      "authorName": "John Steinbeck",
+      "autoPickReasons": [],
+      "bookId": 9250,
+      "bookTitle": "East of Eden",
+      "canBypassFilters": false,
+      "commentUrl": "<redacted: carried a Prowlarr apikey>",
+      "customFormatScore": 0,
+      "customFormats": [],
+      "discography": false,
+      "displayTitle": "East of Eden by John Steinbeck [ENG / ]",
+      "downloadAllowed": false,
+      "downloadUrl": "<redacted: carried a Prowlarr apikey>",
+      "formatType": "audiobook",
+      "guid": "https://www.myanonamouse.net/t/100010",
+      "hasHardFilters": true,
+      "hasSoftFilters": false,
+      "indexer": "MAM (via Prowlarr)",
+      "indexerFlags": 0,
+      "indexerId": 1,
+      "infoUrl": "<redacted: carried a Prowlarr apikey>",
+      "isGraphicAudio": false,
+      "isMultiFormat": false,
+      "isPreferredChoice": false,
+      "leechers": 0,
+      "magnetUrl": "<redacted: carried a Prowlarr apikey>",
+      "protocol": "torrent",
+      "publishDate": "2021-08-25T20:47:28Z",
+      "quality": {
+        "quality": {
+          "id": 12,
+          "isConversionTarget": true,
+          "name": "M4B"
+        },
+        "revision": {
+          "isRepack": false,
+          "real": 0,
+          "version": 1
+        }
+      },
+      "qualityWeight": 301,
+      "rank": 4,
+      "rejected": true,
+      "rejectionDetails": [
+        {
+          "canBypass": false,
+          "category": "Matching",
+          "reason": "Release appears to match a different book by this author",
+          "severity": 3,
+          "type": "Permanent"
+        }
+      ],
+      "rejections": [
+        "Release appears to match a different book by this author"
+      ],
+      "releaseHash": "",
+      "releaseWeight": 3,
+      "sceneSource": false,
+      "seeders": 603,
+      "size": 725614592,
+      "temporarilyRejected": false,
+      "title": "East of Eden by John Steinbeck [ENG / M4B]"
+    },
+    {
+      "age": 11,
+      "ageHours": 276.76752277291666,
+      "ageMinutes": 16606.051366375,
+      "approved": false,
+      "authorId": 31,
+      "authorName": "John Steinbeck",
+      "autoPickReasons": [],
+      "bookId": 9250,
+      "bookTitle": "East of Eden",
+      "canBypassFilters": false,
+      "commentUrl": "<redacted: carried a Prowlarr apikey>",
+      "customFormatScore": 0,
+      "customFormats": [],
+      "discography": false,
+      "displayTitle": "East of Eden by John Steinbeck [ENG / ]",
+      "downloadAllowed": false,
+      "downloadUrl": "<redacted: carried a Prowlarr apikey>",
+      "formatType": "audiobook",
+      "guid": "https://www.myanonamouse.net/t/100004",
+      "hasHardFilters": true,
+      "hasSoftFilters": false,
+      "indexer": "MAM (via Prowlarr)",
+      "indexerFlags": 1,
+      "indexerId": 1,
+      "infoUrl": "<redacted: carried a Prowlarr apikey>",
+      "isGraphicAudio": false,
+      "isMultiFormat": false,
+      "isPreferredChoice": false,
+      "leechers": 1,
+      "magnetUrl": "<redacted: carried a Prowlarr apikey>",
+      "protocol": "torrent",
+      "publishDate": "2026-09-10T07:52:17Z",
+      "quality": {
+        "quality": {
+          "id": 12,
+          "isConversionTarget": true,
+          "name": "M4B"
+        },
+        "revision": {
+          "isRepack": false,
+          "real": 0,
+          "version": 1
+        }
+      },
+      "qualityWeight": 301,
+      "rank": 5,
+      "rejected": true,
+      "rejectionDetails": [
+        {
+          "canBypass": false,
+          "category": "Matching",
+          "reason": "Release appears to match a different book by this author",
+          "severity": 3,
+          "type": "Permanent"
+        }
+      ],
+      "rejections": [
+        "Release appears to match a different book by this author"
+      ],
+      "releaseHash": "",
+      "releaseWeight": 4,
+      "sceneSource": false,
+      "seeders": 161,
+      "size": 1503238553,
+      "temporarilyRejected": false,
+      "title": "East of Eden by John Steinbeck [ENG / M4B]"
+    },
+    {
+      "age": 2775,
+      "ageHours": 66620.67057833192,
+      "ageMinutes": 3997240.2346999166,
+      "approved": false,
+      "authorId": 31,
+      "authorName": "John Steinbeck",
+      "autoPickReasons": [],
+      "bookId": 9250,
+      "bookTitle": "East Of Eden",
+      "canBypassFilters": false,
+      "commentUrl": "<redacted: carried a Prowlarr apikey>",
+      "customFormatScore": 0,
+      "customFormats": [],
+      "discography": false,
+      "displayTitle": "East Of Eden by John Steinbeck [ENG / ]",
+      "downloadAllowed": false,
+      "downloadUrl": "<redacted: carried a Prowlarr apikey>",
+      "formatType": "audiobook",
+      "guid": "https://www.myanonamouse.net/t/100008",
+      "hasHardFilters": true,
+      "hasSoftFilters": false,
+      "indexer": "MAM (via Prowlarr)",
+      "indexerFlags": 0,
+      "indexerId": 1,
+      "infoUrl": "<redacted: carried a Prowlarr apikey>",
+      "isGraphicAudio": false,
+      "isMultiFormat": false,
+      "isPreferredChoice": false,
+      "leechers": 0,
+      "magnetUrl": "<redacted: carried a Prowlarr apikey>",
+      "protocol": "torrent",
+      "publishDate": "2019-02-14T23:58:06Z",
+      "quality": {
+        "quality": {
+          "id": 12,
+          "isConversionTarget": true,
+          "name": "M4B"
+        },
+        "revision": {
+          "isRepack": false,
+          "real": 0,
+          "version": 1
+        }
+      },
+      "qualityWeight": 301,
+      "rank": 6,
+      "rejected": true,
+      "rejectionDetails": [
+        {
+          "canBypass": false,
+          "category": "Matching",
+          "reason": "Release appears to match a different book by this author",
+          "severity": 3,
+          "type": "Permanent"
+        }
+      ],
+      "rejections": [
+        "Release appears to match a different book by this author"
+      ],
+      "releaseHash": "",
+      "releaseWeight": 5,
+      "sceneSource": false,
+      "seeders": 38,
+      "size": 752353280,
+      "temporarilyRejected": false,
+      "title": "East Of Eden by John Steinbeck [ENG / M4B]"
+    }
+  ],
+  "releases": [],
+  "siblingMediaType": "ebook",
+  "siblingToggleDisabledReason": "No ebook root folder configured for John Steinbeck",
+  "siblingToggleEnabled": false
+}

@@ -1,0 +1,450 @@
+[
+  {
+    "title": "Project Hail Mary",
+    "authorTitle": " Project Hail Mary",
+    "overview": "Ryland Grace is the sole survivor on a desperate, last-chance mission—and if he fails, humanity and the earth itself will perish.<br/><br/>Except that right now, he doesn’t know that. H…",
+    "authorId": 0,
+    "foreignBookId": "gr:79106958",
+    "localBookId": "0",
+    "foreignEditionId": "gr:54493401",
+    "goodreadsBookId": "gr:54493401",
+    "goodreadsWorkId": "gr:79106958",
+    "titleSlug": "79106958",
+    "monitored": false,
+    "audiobookMonitored": false,
+    "ebookMonitored": false,
+    "anyEditionOk": true,
+    "ratings": {
+      "votes": 1872447,
+      "value": 4.51,
+      "popularity": 8444735.969999999
+    },
+    "added": "0001-01-01T05:51:00Z",
+    "pageCount": 0,
+    "genres": [],
+    "author": {
+      "status": "continuing",
+      "ended": false,
+      "authorName": "Andy Weir",
+      "foreignAuthorId": "gr:6540057",
+      "links": [
+        {
+          "url": "https://www.goodreads.com/author/show/6540057.Andy_Weir",
+          "name": "goodreads"
+        }
+      ],
+      "images": [],
+      "monitored": false,
+      "genres": [],
+      "cleanName": "andyweir",
+      "tags": [],
+      "audiobookTags": [],
+      "ebookTags": [],
+      "added": "0001-01-01T05:51:00Z",
+      "ratings": {
+        "votes": 0,
+        "value": 0,
+        "popularity": 0
+      },
+      "lastSelectedMediaType": "audiobook",
+      "statistics": {
+        "bookFileCount": 0,
+        "bookCount": 0,
+        "availableBookCount": 0,
+        "totalBookCount": 0,
+        "sizeOnDisk": 0,
+        "percentOfBooks": 0
+      }
+    },
+    "images": [
+      {
+        "url": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef0000000296223492607f08cece9c4596/54493401._SY750_.jpg",
+        "coverType": "cover",
+        "extension": ".jpg",
+        "remoteUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1764703833i/54493401._SY750_.jpg"
+      }
+    ],
+    "links": [],
+    "addOptions": {
+      "addType": "automatic",
+      "searchForNewBook": false
+    },
+    "remoteCover": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef0000000296223492607f08cece9c4596/54493401._SY750_.jpg",
+    "editions": [
+      {
+        "bookId": 0,
+        "foreignEditionId": "gr:54493401",
+        "titleSlug": "79106958",
+        "asins": [],
+        "title": "Project Hail Mary",
+        "overview": "Ryland Grace is the sole survivor on a desperate, last-chance mission—and if he fails, humanity and the earth itself will perish.<br/><br/>Except that right now, he doesn’t know that. H…",
+        "isEbook": false,
+        "pageCount": 476,
+        "images": [
+          {
+            "url": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef0000000296223492607f08cece9c4596/54493401._SY750_.jpg",
+            "coverType": "cover",
+            "extension": ".jpg"
+          }
+        ],
+        "links": [],
+        "ratings": {
+          "votes": 1872447,
+          "value": 4.51,
+          "popularity": 8444735.969999999
+        },
+        "monitored": true,
+        "manualAdd": false,
+        "goodreadsEditionId": 54493401,
+        "bookFileCount": 0,
+        "monitoredByAnotherAudiobookBook": false,
+        "narratorNames": [],
+        "hasChapters": false,
+        "chapters": []
+      }
+    ],
+    "localAudiobookBooks": [],
+    "localEbookBooks": [],
+    "mediaType": "audiobook",
+    "availableNarrators": [],
+    "narratorNames": [],
+    "hasFiles": false,
+    "isOmnibus": false
+  },
+  {
+    "title": "Project Hail Mary / Artemis/ The Martian",
+    "authorTitle": " Project Hail Mary / Artemis/ The Martian",
+    "overview": "Please Note That The Following Individual Books As Per Original ISBN and Cover Image In this Listing shall be Dispatched <br/><br/><br/>Project Hail Mary [Hardcover]<br/>Artemis<br/>The Martian<br/><br/>Andy We…",
+    "authorId": 0,
+    "foreignBookId": "gr:91054370",
+    "localBookId": "0",
+    "foreignEditionId": "gr:119255205",
+    "goodreadsBookId": "gr:119255205",
+    "goodreadsWorkId": "gr:91054370",
+    "titleSlug": "91054370",
+    "monitored": false,
+    "audiobookMonitored": false,
+    "ebookMonitored": false,
+    "anyEditionOk": true,
+    "ratings": {
+      "votes": 830,
+      "value": 4.46,
+      "popularity": 3701.8
+    },
+    "added": "0001-01-01T05:51:00Z",
+    "pageCount": 0,
+    "genres": [],
+    "author": {
+      "status": "continuing",
+      "ended": false,
+      "authorName": "Andy Weir",
+      "foreignAuthorId": "gr:6540057",
+      "links": [
+        {
+          "url": "https://www.goodreads.com/author/show/6540057.Andy_Weir",
+          "name": "goodreads"
+        }
+      ],
+      "images": [],
+      "monitored": false,
+      "genres": [],
+      "cleanName": "andyweir",
+      "tags": [],
+      "audiobookTags": [],
+      "ebookTags": [],
+      "added": "0001-01-01T05:51:00Z",
+      "ratings": {
+        "votes": 0,
+        "value": 0,
+        "popularity": 0
+      },
+      "lastSelectedMediaType": "audiobook",
+      "statistics": {
+        "bookFileCount": 0,
+        "bookCount": 0,
+        "availableBookCount": 0,
+        "totalBookCount": 0,
+        "sizeOnDisk": 0,
+        "percentOfBooks": 0
+      }
+    },
+    "images": [
+      {
+        "url": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000004e3cb18f72c02e0c4c3013fd0/119255205._SX500_.jpg",
+        "coverType": "cover",
+        "extension": ".jpg",
+        "remoteUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1676421869i/119255205._SX500_.jpg"
+      }
+    ],
+    "links": [],
+    "addOptions": {
+      "addType": "automatic",
+      "searchForNewBook": false
+    },
+    "remoteCover": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000004e3cb18f72c02e0c4c3013fd0/119255205._SX500_.jpg",
+    "editions": [
+      {
+        "bookId": 0,
+        "foreignEditionId": "gr:119255205",
+        "titleSlug": "91054370",
+        "asins": [],
+        "title": "Project Hail Mary / Artemis/ The Martian",
+        "overview": "Please Note That The Following Individual Books As Per Original ISBN and Cover Image In this Listing shall be Dispatched <br/><br/><br/>Project Hail Mary [Hardcover]<br/>Artemis<br/>The Martian<br/><br/>Andy We…",
+        "isEbook": false,
+        "pageCount": 1165,
+        "images": [
+          {
+            "url": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000004e3cb18f72c02e0c4c3013fd0/119255205._SX500_.jpg",
+            "coverType": "cover",
+            "extension": ".jpg"
+          }
+        ],
+        "links": [],
+        "ratings": {
+          "votes": 830,
+          "value": 4.46,
+          "popularity": 3701.8
+        },
+        "monitored": true,
+        "manualAdd": false,
+        "goodreadsEditionId": 119255205,
+        "bookFileCount": 0,
+        "monitoredByAnotherAudiobookBook": false,
+        "narratorNames": [],
+        "hasChapters": false,
+        "chapters": []
+      }
+    ],
+    "localAudiobookBooks": [],
+    "localEbookBooks": [],
+    "mediaType": "audiobook",
+    "availableNarrators": [],
+    "narratorNames": [],
+    "hasFiles": false,
+    "isOmnibus": false
+  },
+  {
+    "title": "SUMMARY AND ANALYSIS OF PROJECT HAIL MARY BY ANDY WEIR",
+    "authorTitle": " SUMMARY AND ANALYSIS OF PROJECT HAIL MARY BY ANDY WEIR",
+    "overview": "Is it in your wish to read Project Hail Mary but you do not have much time to read through the large numbers of pages of the original book? then you are a lucky one. Good Read…",
+    "authorId": 0,
+    "foreignBookId": "gr:90898733",
+    "localBookId": "0",
+    "foreignEditionId": "gr:58007522",
+    "goodreadsBookId": "gr:58007522",
+    "goodreadsWorkId": "gr:90898733",
+    "titleSlug": "90898733",
+    "monitored": false,
+    "audiobookMonitored": false,
+    "ebookMonitored": false,
+    "anyEditionOk": true,
+    "ratings": {
+      "votes": 24,
+      "value": 4.08,
+      "popularity": 97.92
+    },
+    "added": "0001-01-01T05:51:00Z",
+    "pageCount": 0,
+    "genres": [],
+    "author": {
+      "status": "continuing",
+      "ended": false,
+      "authorName": "Good Reads Publishing",
+      "foreignAuthorId": "gr:21121760",
+      "links": [
+        {
+          "url": "https://www.goodreads.com/author/show/21121760.Good_Reads_Publishing",
+          "name": "goodreads"
+        }
+      ],
+      "images": [],
+      "monitored": false,
+      "genres": [],
+      "cleanName": "goodreadspublishing",
+      "tags": [],
+      "audiobookTags": [],
+      "ebookTags": [],
+      "added": "0001-01-01T05:51:00Z",
+      "ratings": {
+        "votes": 0,
+        "value": 0,
+        "popularity": 0
+      },
+      "lastSelectedMediaType": "audiobook",
+      "statistics": {
+        "bookFileCount": 0,
+        "bookCount": 0,
+        "availableBookCount": 0,
+        "totalBookCount": 0,
+        "sizeOnDisk": 0,
+        "percentOfBooks": 0
+      }
+    },
+    "images": [
+      {
+        "url": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000001e5296d89bef23108c54b64c8/58007522._SY750_.jpg",
+        "coverType": "cover",
+        "extension": ".jpg",
+        "remoteUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1620667041i/58007522._SY750_.jpg"
+      }
+    ],
+    "links": [],
+    "addOptions": {
+      "addType": "automatic",
+      "searchForNewBook": false
+    },
+    "remoteCover": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000001e5296d89bef23108c54b64c8/58007522._SY750_.jpg",
+    "editions": [
+      {
+        "bookId": 0,
+        "foreignEditionId": "gr:58007522",
+        "titleSlug": "90898733",
+        "asins": [],
+        "title": "SUMMARY AND ANALYSIS OF PROJECT HAIL MARY BY ANDY WEIR",
+        "overview": "Is it in your wish to read Project Hail Mary but you do not have much time to read through the large numbers of pages of the original book? then you are a lucky one. Good Read…",
+        "isEbook": false,
+        "pageCount": 79,
+        "images": [
+          {
+            "url": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000001e5296d89bef23108c54b64c8/58007522._SY750_.jpg",
+            "coverType": "cover",
+            "extension": ".jpg"
+          }
+        ],
+        "links": [],
+        "ratings": {
+          "votes": 24,
+          "value": 4.08,
+          "popularity": 97.92
+        },
+        "monitored": true,
+        "manualAdd": false,
+        "goodreadsEditionId": 58007522,
+        "bookFileCount": 0,
+        "monitoredByAnotherAudiobookBook": false,
+        "narratorNames": [],
+        "hasChapters": false,
+        "chapters": []
+      }
+    ],
+    "localAudiobookBooks": [],
+    "localEbookBooks": [],
+    "mediaType": "audiobook",
+    "availableNarrators": [],
+    "narratorNames": [],
+    "hasFiles": false,
+    "isOmnibus": false
+  },
+  {
+    "title": "Summary & Analysis of Andy Weir Book: Project Hail Mary (PressPrint)",
+    "authorTitle": " Summary & Analysis of Andy Weir Book: Project Hail Mary (PressPrint)",
+    "overview": "Rуlаnd Grace іѕ the ѕоlе survivor оf a suicide mіѕѕіоn tо ѕtор an аlіеn organism thаt fееdѕ on stars (&quot;Aѕtrорhаgе&quot;), whісh іѕ саuѕіng thе аросаlуріс ѕсеnаrіо of thе ѕun dimmin…",
+    "authorId": 0,
+    "foreignBookId": "gr:90988498",
+    "localBookId": "0",
+    "foreignEditionId": "gr:58057170",
+    "goodreadsBookId": "gr:58057170",
+    "goodreadsWorkId": "gr:90988498",
+    "titleSlug": "90988498",
+    "monitored": false,
+    "audiobookMonitored": false,
+    "ebookMonitored": false,
+    "anyEditionOk": true,
+    "ratings": {
+      "votes": 20,
+      "value": 3.85,
+      "popularity": 77
+    },
+    "added": "0001-01-01T05:51:00Z",
+    "pageCount": 0,
+    "genres": [],
+    "author": {
+      "status": "continuing",
+      "ended": false,
+      "authorName": "PressPrint",
+      "foreignAuthorId": "gr:21253582",
+      "links": [
+        {
+          "url": "https://www.goodreads.com/author/show/21253582.PressPrint",
+          "name": "goodreads"
+        }
+      ],
+      "images": [],
+      "monitored": false,
+      "genres": [],
+      "cleanName": "pressprint",
+      "tags": [],
+      "audiobookTags": [],
+      "ebookTags": [],
+      "added": "0001-01-01T05:51:00Z",
+      "ratings": {
+        "votes": 0,
+        "value": 0,
+        "popularity": 0
+      },
+      "lastSelectedMediaType": "audiobook",
+      "statistics": {
+        "bookFileCount": 0,
+        "bookCount": 0,
+        "availableBookCount": 0,
+        "totalBookCount": 0,
+        "sizeOnDisk": 0,
+        "percentOfBooks": 0
+      }
+    },
+    "images": [
+      {
+        "url": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000006d1656c553ff3afd44f639817/58057170._SY750_.jpg",
+        "coverType": "cover",
+        "extension": ".jpg",
+        "remoteUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/books/1621158404i/58057170._SY750_.jpg"
+      }
+    ],
+    "links": [],
+    "addOptions": {
+      "addType": "automatic",
+      "searchForNewBook": false
+    },
+    "remoteCover": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000006d1656c553ff3afd44f639817/58057170._SY750_.jpg",
+    "editions": [
+      {
+        "bookId": 0,
+        "foreignEditionId": "gr:58057170",
+        "titleSlug": "90988498",
+        "asins": [],
+        "title": "Summary & Analysis of Andy Weir Book: Project Hail Mary (PressPrint)",
+        "overview": "Rуlаnd Grace іѕ the ѕоlе survivor оf a suicide mіѕѕіоn tо ѕtор an аlіеn organism thаt fееdѕ on stars (&quot;Aѕtrорhаgе&quot;), whісh іѕ саuѕіng thе аросаlуріс ѕсеnаrіо of thе ѕun dimmin…",
+        "isEbook": false,
+        "pageCount": 78,
+        "images": [
+          {
+            "url": "/MediaCoverProxy/deadbeefdeadbeefdeadbeefdeadbeef00000006d1656c553ff3afd44f639817/58057170._SY750_.jpg",
+            "coverType": "cover",
+            "extension": ".jpg"
+          }
+        ],
+        "links": [],
+        "ratings": {
+          "votes": 20,
+          "value": 3.85,
+          "popularity": 77
+        },
+        "monitored": true,
+        "manualAdd": false,
+        "goodreadsEditionId": 58057170,
+        "bookFileCount": 0,
+        "monitoredByAnotherAudiobookBook": false,
+        "narratorNames": [],
+        "hasChapters": false,
+        "chapters": []
+      }
+    ],
+    "localAudiobookBooks": [],
+    "localEbookBooks": [],
+    "mediaType": "audiobook",
+    "availableNarrators": [],
+    "narratorNames": [],
+    "hasFiles": false,
+    "isOmnibus": false
+  }
+]
