@@ -705,12 +705,43 @@ reminder is only about logging in.
 
 ## Library backup
 
-A nightly S3 sync (script in `scripts/`, run from host cron) copies
-`${DATA_ROOT}/books/audiobooks` and `${DATA_ROOT}/books/ebooks`. It **excludes
-`books/mam`**: that dir is hardlinks of the library, so syncing it would upload
-every book twice (and it must never be a restore target that could disturb
-seeding). Staging and cover caches are regenerable and not synced. The script
-on the host is a copy; reinstall it after changing it in the repo.
+`scripts/landible-books-s3-sync.sh` runs nightly on the **Proxmox host** (it
+needs the host path of the data mount, not the LXC's) and syncs
+`books/audiobooks` + `books/ebooks` to S3 in COPY mode (never deletes). It
+**excludes `books/mam`**: that dir is hardlinks of the library, so syncing it
+would upload every book twice, and it must never be a restore target that could
+disturb seeding. The cover cache and Libation staging are regenerable and not
+synced. On success it publishes a CloudWatch `LastSuccess` metric for a
+dead-man-switch alarm.
+
+Install (on the host; site values go in the env file, not the repo):
+
+```bash
+install -m 755 /path/to/landible/scripts/landible-books-s3-sync.sh /root/scripts/
+cat > /root/scripts/landible-books-s3-sync.env <<'ENV'
+SRC=/mnt/media/landible
+MOUNT=/mnt/media
+BUCKET=<bucket>
+PREFIX=landible-books
+REGION=us-east-1
+NAMESPACE=<metric namespace>
+JOB=landible-books-s3-sync
+ENV
+install -m 644 /path/to/landible/scripts/landible-books-s3-sync.logrotate /etc/logrotate.d/landible-books-s3-sync
+( crontab -l; echo '45 3 * * * /root/scripts/landible-books-s3-sync.sh >> /var/log/landible-books-s3-sync.log 2>&1' ) | crontab -
+```
+
+Run it once by hand **before** creating the dead-man alarm (no data counts as
+breaching). The host copy is a copy: reinstall after changing the script.
+
+The app state (Audiobookshelf/Chaptarr/Prowlarr/Libation DBs, qBittorrent's
+torrents) lives on the LXC rootfs and is covered by the host's vzdump job, not
+this script. Audiobookshelf's own daily DB backups sit in `/metadata/backups`.
+
+**Restore:** `aws s3 sync s3://<bucket>/landible-books/books/ ${DATA_ROOT}/books/`,
+then chown to `PUID:PGID`. `books/mam` is not in S3: before a MAM torrent
+could be counted as a hit & run, hardlink its files from the library back into
+`books/mam/` and force-recheck it in qbittorrent-mam.
 
 ## iPhone app: SoundLeaf
 
