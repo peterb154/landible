@@ -1,0 +1,15 @@
+[Unit]
+Description=Landible deploy shim (redeploy on push, health, webhook relay)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/landible/deploy
+EnvironmentFile=/opt/landible/deploy/.env
+ExecStart=/root/.local/bin/uv run --frozen uvicorn main:app --host 0.0.0.0 --port 8090
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
