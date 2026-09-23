@@ -208,10 +208,19 @@ def _only_advisory(r: dict) -> bool:
 
 
 def release_main_title(release_title: str, author: str | None) -> str:
-    """A MAM release title reduced to the work: no "[ENG / M4B]" tag, no "by <author>"."""
+    """A MAM release title reduced to the work: no "[ENG / M4B]" tag, no author list.
+
+    MAM's shape is "Title by Author1, Author2 & Author3 [tags]", so once the
+    tags are gone everything from the "by" that introduces the requested author
+    to the end is names, not title. Cutting only "by <author>" left the
+    co-authors in, and every one inflated the reverse match until a
+    three-author book could never be vouched for. The LAST such "by" is the
+    one cut (greedy prefix), so a title like "Stand by Me" keeps its own "by".
+    """
     got = _main_title(release_title)
     if author:
-        got = re.sub(rf"\bby\s+{re.escape(author)}\b", " ", got, flags=re.IGNORECASE)
+        got = re.sub(rf"^(.*)\bby\s+[^\[]*?\b{re.escape(author)}\b.*$", r"\1", got,
+                     flags=re.IGNORECASE | re.DOTALL)
     return got
 
 
@@ -226,8 +235,27 @@ def release_is_this_book(release_title: str, title: str, author: str | None) -> 
     got = release_main_title(release_title, author)
     return (
         title_matches(title, got) and title_matches(got, title)
+        and _significant_matches(title, got)
         and (author_matches(author, release_title) if author else True)
     )
+
+
+# Words that carry no identity in a title. Counting them let "The Unicorn
+# Project" pass for "The Phoenix Project" (2 of 3 words), and this check is
+# what overrides Chaptarr's own rejection, so a false yes grabs the wrong book.
+# Forward only (the requested title's words in the release): the reverse
+# direction must keep letting bundles and part-releases through, because
+# `bundled_or_partial` turns those into a question rather than a silent no.
+_STOPWORDS = {"the", "a", "an", "of", "and", "to", "in", "on", "for", "at", "by", "with"}
+
+
+def _significant_matches(want: str, got: str) -> bool:
+    """`title_matches`, counting only the words that identify a title."""
+    words = _words(_main_title(want)) - _STOPWORDS
+    if not words:                       # a title of only stopwords: nothing to add
+        return True
+    need = math.ceil(0.6 * len(words))
+    return len(words & _words(got)) >= need
 
 
 def vouched_for(r: dict, title: str, author: str | None) -> bool:
