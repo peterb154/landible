@@ -9,11 +9,11 @@
 #
 # PATHS: everything under ${DATA_ROOT} is ONE filesystem on the host:
 #
-#   ${DATA_ROOT}/books/audiobooks    the Audiobookshelf audiobook library
-#   ${DATA_ROOT}/books/ebooks        the ebook library (hardlinks of mam/)
-#   ${DATA_ROOT}/books/mam           MAM seeding dir (qbittorrent-mam)
-#   ${DATA_ROOT}/appdata/…           regenerable caches kept off the rootfs
-#   ${DATA_ROOT}/libation-staging    Libation's in-progress downloads
+#   ${DATA_ROOT:?set DATA_ROOT in .env}/books/audiobooks    the Audiobookshelf audiobook library
+#   ${DATA_ROOT:?set DATA_ROOT in .env}/books/ebooks        the ebook library (hardlinks of mam/)
+#   ${DATA_ROOT:?set DATA_ROOT in .env}/books/mam           MAM seeding dir (qbittorrent-mam)
+#   ${DATA_ROOT:?set DATA_ROOT in .env}/appdata/…           regenerable caches kept off the rootfs
+#   ${DATA_ROOT:?set DATA_ROOT in .env}/libation-staging    Libation's in-progress downloads
 #
 # The container-side paths (/audiobooks, /ebooks, /music/books, …) are the ones
 # the apps' databases store, and they are kept exactly as they were in landora.
@@ -61,13 +61,13 @@ services:
         target: /metadata
         bind: { create_host_path: false }
       - type: bind                                 # the library
-        source: ${DATA_ROOT}/books/audiobooks
+        source: ${DATA_ROOT:?set DATA_ROOT in .env}/books/audiobooks
         target: /audiobooks
         bind: { create_host_path: false }
       # Read-only: ebooks share inodes with MAM seeding torrents, so ABS must
       # never rewrite them. Send to Device only reads.
       - type: bind
-        source: ${DATA_ROOT}/books/ebooks
+        source: ${DATA_ROOT:?set DATA_ROOT in .env}/books/ebooks
         target: /ebooks
         read_only: true
         bind: { create_host_path: false }
@@ -123,13 +123,13 @@ services:
         target: /db
         bind: { create_host_path: false }
       - type: bind             # books land in the ABS library
-        source: ${DATA_ROOT}/books/audiobooks
+        source: ${DATA_ROOT:?set DATA_ROOT in .env}/books/audiobooks
         target: /data
         bind: { create_host_path: false }
       # The entrypoint forces InProgress=/tmp. Keep those 1-2 GB-per-book
       # staging files off the rootfs (it also holds /var/lib/docker).
       - type: bind
-        source: ${DATA_ROOT}/libation-staging
+        source: ${DATA_ROOT:?set DATA_ROOT in .env}/libation-staging
         target: /tmp
         bind: { create_host_path: false }
 
@@ -163,7 +163,7 @@ services:
         target: /config
         bind: { create_host_path: false }
       - type: bind              # only the MAM dir, same path as Chaptarr sees it
-        source: ${DATA_ROOT}/books/mam
+        source: ${DATA_ROOT:?set DATA_ROOT in .env}/books/mam
         target: /music/books/mam
         bind: { create_host_path: false }
     labels:
@@ -201,14 +201,14 @@ services:
         target: /config
         bind: { create_host_path: false }
       - type: bind              # ~4 GB of regenerable cover art, off the rootfs
-        source: ${DATA_ROOT}/appdata/chaptarr-mediacover
+        source: ${DATA_ROOT:?set DATA_ROOT in .env}/appdata/chaptarr-mediacover
         target: /config/MediaCover
         bind: { create_host_path: false }
       # ONE bind holding both the MAM seeding dir and the library: link() across
       # two mounts fails with EXDEV and Chaptarr silently copies (2x disk).
       # Don't split it.
       - type: bind
-        source: ${DATA_ROOT}/books
+        source: ${DATA_ROOT:?set DATA_ROOT in .env}/books
         target: /music/books
         bind: { create_host_path: false }
     labels:

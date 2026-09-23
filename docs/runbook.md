@@ -11,6 +11,8 @@ Conventions used below:
   `landible`); env file `/opt/landible/.env` (`compose/.env` is a symlink to it).
 - Host data lives under `${DATA_ROOT}` (one bind mount into the LXC, one filesystem).
 - Root-only secrets outside the repo live in `/etc/landible`.
+- Snippets below use `${DATA_ROOT}` and friends from `.env`. Load them into
+  your shell first: `set -a; . /opt/landible/.env; set +a`.
 - `<books-host>` is the hostname you serve Audiobookshelf on; `<container-ip>`
   is the container's LAN IP.
 
