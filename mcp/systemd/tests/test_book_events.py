@@ -7,6 +7,8 @@ import importlib.util
 import pathlib
 from datetime import datetime, timezone
 
+import pytest
+
 _p = pathlib.Path(__file__).resolve().parents[1] / "book_events.py"
 _spec = importlib.util.spec_from_file_location("book_events", _p)
 be = importlib.util.module_from_spec(_spec)
@@ -302,11 +304,12 @@ def test_one_stream_failing_does_not_resend_the_other():
     assert [e["event"] for e in sent] == ["book_ready", "book_failed"]   # no repeat
 
 
-def test_a_cancelled_request_never_alerts_as_stuck():
-    """book_stuck exists for a request nobody has dealt with. A cancelled one
-    has been dealt with — that is what cancelling means."""
+@pytest.mark.parametrize("settled", ["cancelled", "retracted"])
+def test_a_settled_request_never_alerts_as_stuck(settled):
+    """book_stuck exists for a request nobody has dealt with. A cancelled or
+    retracted one has been dealt with — that is what those states mean."""
     post, state = _Poster(), {}
-    ledger = {"9249": _ledger(state="cancelled")}
+    ledger = {"9249": _ledger(state=settled)}
     assert be.run_stuck(ledger, [], state, post, lambda _id: 0, NOW)
     assert post.sent == []
 

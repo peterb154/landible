@@ -2587,6 +2587,108 @@ def test_a_cancelled_book_drops_out_of_the_live_checks(fake):
     assert chaptarr.writes() == []                    # and status() left it alone
 
 
+# ---- retracting a wrong import ----
+
+def _wrong_ebook(**over):
+    # The real case: a Greek edition of The Martian, imported as an ebook,
+    # which the (audio) tag check can never catch.
+    ledger.save(books.BOOK_LEDGER, {"22885": {
+        "title": "The Martian", "author": "Andy Weir", "format": "ebook",
+        "state": "imported", "content": "unverified", "grab_history_id": 501,
+        "file_id": 9001, "torrent_hash": "deadbeef", **over,
+    }})
+
+
+def test_retract_blocklists_unmonitors_and_removes_the_library_copy(fake):
+    _wrong_ebook()
+    chaptarr = fake("_chaptarr", {
+        ("POST", "/api/v1/history/failed/501"): {},
+        ("PUT", "/api/v1/book/monitor"): {},
+        ("DELETE", "/api/v1/bookfile/9001"): {},
+    })
+    # qbittorrent-mam is left with no routes: any call to it fails the test.
+
+    result = asyncio.run(books.retract("22885", "Greek edition"))
+
+    assert result["status"] == "retracted"
+    # Blocklist BEFORE the delete: the other order can leave a deleted book
+    # whose release is still eligible to be grabbed again.
+    assert [(m, p) for m, p, _ in chaptarr.writes()] == [
+        ("POST", "/api/v1/history/failed/501"),
+        ("PUT", "/api/v1/book/monitor"),
+        ("DELETE", "/api/v1/bookfile/9001"),
+    ]
+    assert chaptarr.writes()[1][2] == {"bookIds": [22885], "monitored": False}
+    entry = ledger.load(books.BOOK_LEDGER)["22885"]
+    assert entry["state"] == "retracted"
+    assert "Greek edition" in entry["reason"] and "release blocklisted" in entry["reason"]
+    assert "keeps seeding" in result["message"]
+
+
+def test_retract_when_the_grab_has_aged_out_of_history(fake):
+    """No blocklist possible — say so rather than failing the whole retract."""
+    _wrong_ebook()
+    fake("_chaptarr", {
+        ("POST", "/api/v1/history/failed/501"): httpx.Response(404),
+        ("PUT", "/api/v1/book/monitor"): {},
+        ("DELETE", "/api/v1/bookfile/9001"): {},
+    })
+
+    result = asyncio.run(books.retract("22885", "Greek edition"))
+
+    assert result["status"] == "retracted"
+    assert "NOT blocklisted" in result["message"]
+    assert "NOT blocklisted" in ledger.load(books.BOOK_LEDGER)["22885"]["reason"]
+
+
+def test_retract_with_no_file_on_record_says_to_check_by_hand(fake):
+    _wrong_ebook(file_id=None, grab_history_id=None)
+    chaptarr = fake("_chaptarr", {("PUT", "/api/v1/book/monitor"): {}})
+
+    result = asyncio.run(books.retract("22885", "wrong book"))
+
+    assert result["status"] == "retracted"
+    assert [(m, p) for m, p, _ in chaptarr.writes()] == [("PUT", "/api/v1/book/monitor")]
+    assert "check the library by hand" in result["message"]
+
+
+@pytest.mark.parametrize("state", ["requested", "downloading", "verifying", "failed", "cancelled", "retracted"])
+def test_only_an_imported_book_can_be_retracted(fake, state):
+    _wrong_ebook(state=state)
+    chaptarr = fake("_chaptarr", {})
+
+    result = asyncio.run(books.retract("22885", "x"))
+
+    assert result["status"] == "not_retractable"
+    assert chaptarr.writes() == []
+    assert ledger.load(books.BOOK_LEDGER)["22885"]["state"] == state
+
+
+def test_retracting_a_book_that_was_never_requested(fake):
+    ledger.save(books.BOOK_LEDGER, {})
+    assert asyncio.run(books.retract("1234", "x"))["status"] == "not_found"
+
+
+def test_a_retracted_book_is_not_reported_as_in_the_library(fake):
+    """The bug this exists for: status kept calling the Greek Martian imported."""
+    _wrong_ebook(state="retracted", reason="Greek edition; release blocklisted")
+    _qbt(fake, [])
+    _abs(fake)
+    chaptarr = fake("_chaptarr", {("GET", "/api/v1/queue"): {"records": []}})
+
+    book = asyncio.run(books.status(None))["books"][0]
+
+    assert book["state"] == "retracted"
+    assert "not in the library" in book["summary"]
+    assert chaptarr.writes() == []
+
+
+def test_cancel_points_an_imported_book_at_retract(fake):
+    _wrong_ebook()
+    fake("_chaptarr", {("GET", "/api/v1/queue"): {"records": []}})
+    assert "landible_book_retract" in asyncio.run(books.cancel("22885"))["message"]
+
+
 # ---- the library entry is a different book ----
 
 @pytest.mark.parametrize("item_title, flagged", [

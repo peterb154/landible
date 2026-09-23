@@ -388,7 +388,7 @@ Using it (the MCP tools make the same calls):
 ## Asking an assistant for a book (MCP)
 
 `landible_book_search` → `landible_book_request` → `landible_book_status`, plus
-`landible_audiobooks` for the library, `landible_book_cancel`,
+`landible_audiobooks` for the library, `landible_book_cancel`, `landible_book_retract`,
 `landible_book_kindle` and `landible_mam_stats`. Code:
 `mcp/src/landible_mcp/books.py`. Requests are recorded in the `books.json`
 ledger; the MCP is its only writer.
@@ -506,6 +506,14 @@ ledger; the MCP is its only writer.
   seeding does), and the reply says so. `cancelled` has three consumers and all
   must handle it: the `live` filter in `status()`, `summarize()`, and
   `stuck_candidates` in `book_events.py`.
+- **Retract undoes a wrong import (`landible_book_retract`):** for an
+  `imported` book that is the wrong thing — mostly ebooks, since the automatic
+  content check reads audio tags. In order: blocklist the release
+  (`POST /history/failed/{grab}`; a grab aged out of history 404s and is
+  reported, not fatal), unmonitor the book, mark the ledger `retracted`,
+  delete the library copy (`DELETE /bookfile/{id}`, a hardlink). The torrent
+  keeps seeding. `retracted` is handled by the same three consumers as
+  `cancelled`.
 - **ABS user `mcp`:** non-admin, key in `mcp/.env` as `ABS_API_KEY`.
 
 ## Push notifications
