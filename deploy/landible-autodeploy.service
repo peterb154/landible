@@ -1,0 +1,8 @@
+[Unit]
+Description=landible auto-deploy (deploy when origin/main moves)
+After=network-online.target landible-deploy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/landible/deploy/landible-autodeploy.sh
