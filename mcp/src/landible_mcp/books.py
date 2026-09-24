@@ -5,8 +5,9 @@ Rules this file must keep (the invariants):
   - Nothing here talks to MAM or Prowlarr, and no tool output carries a
     Prowlarr URL or key: every result is built from an allow-list of fields
     (`_slim_*`), never by passing an API object through.
-  - qbittorrent-mam is READ-ONLY from here (login + torrents/info). Removing or
-    pausing a MAM torrent is a hit & run.
+  - qbittorrent-mam is ADD-ONLY from here: it reads torrents/info, and it adds
+    a .torrent the user handed in (`add_torrent`), with unlimited seeding. It
+    never removes, pauses or re-limits a torrent — any of those is a hit & run.
   - A request is refused BEFORE anything is added to Chaptarr once the guard
     count reaches MAM_UNSATISFIED_CAP.
 
@@ -58,6 +59,9 @@ Current cross-poll readers, and why each is safe:
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
+import hashlib
 import math
 import os
 import re
@@ -126,6 +130,9 @@ HISTORY_PAGE = 200
 EBOOK_ROOT_FOLDER = "/music/books/ebooks"
 EBOOK_QUALITY_PROFILE = 1     # "E-Book": PDF/MOBI/EPUB/AZW3
 EBOOK_METADATA_PROFILE = 2    # "Ebook Default"
+# How long to wait for Chaptarr's refresh to create an author's ebook records.
+EBOOK_RECORD_POLLS = 20
+EBOOK_RECORD_POLL_S = 3.0
 ROOT_FOLDER = "/music/books/audiobooks"
 ABS_ROOT = "/audiobooks"   # the same dir inside the audiobookshelf container
 # Audiobookshelf serves BOTH book libraries as `mediaType: book`, so the folder
@@ -788,8 +795,11 @@ def grab_token(entry: dict, item: dict | None = None) -> str | None:
     return str(token).lower() if token else None
 
 
-def monitored_edition(editions: list[dict]) -> int | None:
-    """Local integer id of the book's one monitored audiobook edition, else None.
+def monitored_edition(editions: list[dict], fmt: str = "audiobook") -> int | None:
+    """Local integer id of the book's one monitored edition in `fmt`, else None.
+
+    An ebook record's editions are all `isEbook` (The Four Winds: 55 of them, one
+    monitored), so asking it for an audiobook edition always came back None.
 
     `GET /api/v1/book/{id}` returns `editions: []` for these records, and the
     edition list holds every translation (109 for Of Mice and Men), so it has to
@@ -802,8 +812,9 @@ def monitored_edition(editions: list[dict]) -> int | None:
     way to tell which the file belongs to. Guessing files an audiobook against
     the wrong edition silently; skipping says so and leaves it to a human.
     """
-    audiobooks = [int(e["id"]) for e in editions if e.get("monitored") and not e.get("isEbook")]
-    return audiobooks[0] if len(audiobooks) == 1 else None
+    want_ebook = fmt == "ebook"
+    matches = [int(e["id"]) for e in editions if e.get("monitored") and bool(e.get("isEbook")) == want_ebook]
+    return matches[0] if len(matches) == 1 else None
 
 
 def import_files(candidates: list[dict], book_id: str, author_id: int | None, edition_id: int) -> list[dict]:
@@ -848,7 +859,9 @@ def summarize(entry: dict, progress: dict | None) -> str:
     text = _SUMMARY.get(entry.get("state"), "").format(reason=entry.get("reason") or "no release")
     if entry.get("state") == "downloading" and progress and progress.get("percent") is not None:
         text = f"Downloading from MAM: {progress['percent']}%."
-    if entry.get("state") == "downloading" and entry.get("import_forced_at"):
+    if entry.get("state") == "downloading" and entry.get("import_forced_at") and entry.get("hand_added"):
+        text += " The handed-in torrent has finished and was imported against this book; check again shortly."
+    elif entry.get("state") == "downloading" and entry.get("import_forced_at"):
         text += (
             " Chaptarr matched the finished file to a different book of this author, so it was"
             " re-imported against this one; check again shortly."
@@ -915,6 +928,64 @@ def kindle_ready(release: dict) -> bool:
     """
     quality = ((release.get("quality") or {}).get("quality") or {}).get("name") or ""
     return bool(KINDLE_READY.search(release.get("title") or "") or KINDLE_READY.search(quality))
+
+
+def _bdecode(data: bytes, i: int) -> tuple[Any, int]:
+    """One bencoded value at `i` -> (value, index after it). ValueError on junk."""
+    c = data[i:i + 1]
+    if c == b"i":
+        end = data.index(b"e", i)
+        return int(data[i + 1:end]), end + 1
+    if c in (b"l", b"d"):
+        items, i = [], i + 1
+        while data[i:i + 1] != b"e":
+            value, i = _bdecode(data, i)
+            items.append(value)
+        if c == b"l":
+            return items, i + 1
+        return dict(zip(items[::2], items[1::2])), i + 1
+    if c.isdigit():
+        colon = data.index(b":", i)
+        start = colon + 1
+        end = start + int(data[i:colon])
+        if end > len(data):
+            raise ValueError("truncated string")
+        return data[start:end], end
+    raise ValueError(f"not bencode at byte {i}")
+
+
+def torrent_info(data: bytes) -> dict:
+    """{hash, name, files} of a .torrent file. ValueError if it isn't one.
+
+    The infohash is the SHA-1 of the `info` dictionary's exact bytes, so the top
+    level is walked by hand to keep them. It's how qBittorrent names the torrent,
+    and so how a hand-added download is found again on every status poll.
+    """
+    try:
+        if data[:1] != b"d":
+            raise ValueError("not a bencoded dictionary")
+        i, info, raw = 1, None, b""
+        while data[i:i + 1] != b"e":
+            key, i = _bdecode(data, i)
+            start = i
+            value, i = _bdecode(data, i)
+            if key == b"info":
+                info, raw = value, data[start:i]
+    except (IndexError, ValueError) as e:
+        raise ValueError(f"not a valid .torrent file ({e})") from None
+    if not isinstance(info, dict) or b"name" not in info:
+        raise ValueError("not a valid .torrent file (no info dictionary)")
+    name = info[b"name"].decode("utf-8", "replace")
+    files = [
+        "/".join(p.decode("utf-8", "replace") for p in f.get(b"path") or [])
+        for f in info.get(b"files") or []
+    ] or [name]
+    return {"hash": hashlib.sha1(raw).hexdigest(), "name": name, "files": files}
+
+
+def torrent_kindle_ready(files: list[str]) -> bool:
+    """Does the torrent hold a file Amazon's Send to Kindle will take?"""
+    return any(f.lower().endswith(tuple(f".{x}" for x in KINDLE_FORMATS)) for f in files)
 
 
 def author_ebook_fields() -> dict:
@@ -1066,6 +1137,7 @@ def new_book_payload(hit: dict) -> dict:
 
 # Where qbittorrent-mam saves, and where the library file is hardlinked FROM.
 MAM_ROOT = "/music/books/mam"
+HAND_CATEGORY = "landible-hand"   # qbittorrent-mam category for torrents handed in by a user
 _COVER_NAMES = ("cover.jpg", "cover.jpeg", "cover.png")
 _OPF_NS = "http://www.idpf.org/2007/opf"
 
@@ -1383,8 +1455,7 @@ async def retract(book_id: str, reason: str) -> dict:
     await _chaptarr_call("PUT", "/api/v1/book/monitor",
                          json={"bookIds": [int(book_id)], "monitored": False})
 
-    blocklist = ("release blocklisted" if blocklisted else
-                 "release NOT blocklisted (its grab has aged out of Chaptarr's history)")
+    blocklist = ("release blocklisted" if blocklisted else not_blocklisted(entry))
     _record(book_id, {"state": "retracted",
                       "reason": f"{reason}; {blocklist}, library copy removed, torrent still seeding"})
     removed = False
@@ -1418,6 +1489,7 @@ async def _ebook_book_record(hit: dict) -> tuple[dict | None, str | None]:
     things from the user, and one message for both would be false half the time.
     """
     author_id = (hit.get("author") or {}).get("id")
+    enabled_now = False
     if not author_id:
         local = await _local_author(_author_name(hit))
         author_id = (local or {}).get("id")
@@ -1426,6 +1498,7 @@ async def _ebook_book_record(hit: dict) -> tuple[dict | None, str | None]:
         # authors, and adding one is what creates its ebook records.
         added = await _add_ebook_author(_author_name(hit))
         author_id = (added or {}).get("id")
+        enabled_now = bool(author_id)
     if not author_id:
         return None, "no_author"
 
@@ -1433,11 +1506,22 @@ async def _ebook_book_record(hit: dict) -> tuple[dict | None, str | None]:
     if not all(author.get(k) == v for k, v in author_ebook_fields().items()):
         author.update(author_ebook_fields())
         await _chaptarr_call("PUT", f"/api/v1/author/{author_id}", json=author)
+        enabled_now = True
 
-    books = await _chaptarr_call("GET", "/api/v1/book", params={"authorId": author_id}) or []
-    book = ebook_record(books, hit)
+    # Chaptarr creates the ebook records in a background refresh, so a list read
+    # straight after enabling the author comes back without them. The Four
+    # Winds' record appeared seconds after its request was refused. Only wait
+    # when we just enabled: for an author already enabled, a miss is a miss.
+    book = None
+    for attempt in range(EBOOK_RECORD_POLLS if enabled_now else 1):
+        if attempt:
+            await asyncio.sleep(EBOOK_RECORD_POLL_S)
+        books = await _chaptarr_call("GET", "/api/v1/book", params={"authorId": author_id}) or []
+        book = ebook_record(books, hit)
+        if book is not None:
+            break
     if book is None:
-        return None, "no_record"
+        return None, "records_pending" if enabled_now else "no_record"
     if not (book.get("monitored") and book.get("ebookMonitored")):
         book.update({"monitored": True, "ebookMonitored": True})
         book = await _chaptarr_call("PUT", f"/api/v1/book/{book['id']}", json=book) or book
@@ -1450,8 +1534,7 @@ async def _chaptarr_call(method: str, path: str, **kwargs: Any) -> Any:
     return r.json() if r.content else None
 
 
-async def mam_torrents() -> list[dict]:
-    """qbittorrent-mam's torrent list. Read-only: login + torrents/info only."""
+async def _qbt_login() -> None:
     r = await _qbt_mam.post(
         "/api/v2/auth/login",
         data={"username": QBT_MAM_USER, "password": QBT_MAM_PASSWORD},
@@ -1460,9 +1543,36 @@ async def mam_torrents() -> list[dict]:
     r.raise_for_status()
     if not (r.status_code == 204 or r.text.strip() == "Ok."):
         raise RuntimeError("qbittorrent-mam login failed")
-    r = await _qbt_mam.get("/api/v2/torrents/info")
+
+
+async def mam_torrents(infohash: str | None = None) -> list[dict]:
+    """qbittorrent-mam's torrent list, or just the one with `infohash`."""
+    await _qbt_login()
+    r = await _qbt_mam.get("/api/v2/torrents/info", params={"hashes": infohash} if infohash else None)
     r.raise_for_status()
     return r.json()
+
+
+async def _qbt_add(data: bytes, filename: str) -> None:
+    """Add a hand-supplied .torrent to qbittorrent-mam: seed for ever, never auto-removed.
+
+    Its own category so Chaptarr's queue never sees it (Chaptarr only watches
+    `audiobooks`) and can't file it under some other book; `status()` imports
+    it against the book it was handed in for. Unlimited ratio and seeding time
+    (-1) rather than the client default, because stopping early is a hit & run.
+    """
+    await _qbt_login()
+    r = await _qbt_mam.post("/api/v2/torrents/createCategory",
+                            data={"category": HAND_CATEGORY, "savePath": MAM_ROOT})
+    if r.status_code != 409:   # 409: it exists already
+        r.raise_for_status()
+    r = await _qbt_mam.post(
+        "/api/v2/torrents/add",
+        files={"torrents": (filename, data, "application/x-bittorrent")},
+        data={"category": HAND_CATEGORY, "savepath": MAM_ROOT, "autoTMM": "false",
+              "ratioLimit": "-1", "seedingTimeLimit": "-1"},
+    )
+    r.raise_for_status()
 
 
 def load_mam_stats() -> dict | None:
@@ -1816,8 +1926,14 @@ def _slim_releases(releases: list[dict], limit: int = 12) -> list[dict]:
     ]
 
 
-async def _request(title: str, foreign_book_id: str, release_title: str | None = None,
-                   fmt: str = "audiobook") -> dict:
+async def _claim(title: str, foreign_book_id: str, fmt: str) -> tuple[dict | None, dict]:
+    """Everything a grab needs before choosing what to download.
+
+    Guard, lookup, "already have it" checks, the Chaptarr record (added or
+    monitored), and a fresh `requested` ledger entry. Returns (refusal, {}) or
+    (None, {guard, hit, name, book_id}). Shared by a MAM search and a hand-
+    added torrent, so both refuse for exactly the same reasons.
+    """
     g = await guard()
     if not g["ok"]:
         return {
@@ -1826,13 +1942,13 @@ async def _request(title: str, foreign_book_id: str, release_title: str | None =
                 f"Refused: {g['unsatisfied']} MAM torrents haven't seeded 72 h yet (cap {g['cap']}). "
                 "Try again once some have."
             ),
-        }
+        }, {}
     hit = next((h for h in await _lookup(title) if h.get("foreignBookId") == foreign_book_id), None)
     if hit is None:
         return {
             "success": False, "status": "rejected",
             "message": "No lookup result has that foreign_book_id; re-run landible_book_search.",
-        }
+        }, {}
     name = f"{hit.get('title')} by {_author_name(hit)}"
     # Chaptarr's lookup doesn't link a hit to the copy we already have (a
     # different provider id), so ask the library itself — the ONE library that
@@ -1841,7 +1957,7 @@ async def _request(title: str, foreign_book_id: str, release_title: str | None =
     if in_abs(hit.get("title") or "", _author_name(hit),
               await _abs_search(hit.get("title") or title, fmt)):
         return {"success": False, "status": "in_library",
-                "message": f"{name} is already in the {fmt} library."}
+                "message": f"{name} is already in the {fmt} library."}, {}
 
     # Chaptarr often can't link a hit to its own copy, so the ledger is checked
     # on the foreign id too: without this a book already downloading looked new
@@ -1851,7 +1967,7 @@ async def _request(title: str, foreign_book_id: str, release_title: str | None =
     known = ledger_entry(hit, ledger.load(BOOK_LEDGER), fmt) or {}
     if known.get("state") in ("downloading", "verifying"):
         return {"success": False, "status": "already_requested",
-                "message": f"{name} is already {known['state']}."}
+                "message": f"{name} is already {known['state']}."}, {}
 
     local_id = _local_id(hit)
     if fmt == "ebook":
@@ -1865,22 +1981,27 @@ async def _request(title: str, foreign_book_id: str, release_title: str | None =
                     "Check the spelling against the search result, or request the "
                     "audiobook instead."
                     if why == "no_author" else
-                    f"Chaptarr has no ebook record for {name} — its metadata source lists "
-                    "the audiobook only, so there is nothing to search for. The audiobook "
-                    "may still be available."
+                    f"Chaptarr has only just started tracking {_author_name(hit)}'s ebooks and "
+                    f"hasn't finished creating the records yet; {hit.get('title')} isn't among "
+                    "them so far. Ask again in a few minutes. If it's still missing then, "
+                    "Chaptarr's metadata has no ebook edition of it."
+                    if why == "records_pending" else
+                    f"None of {_author_name(hit)}'s ebook records in Chaptarr matches {name}: "
+                    "its metadata may list the audiobook only, or the ebook under another "
+                    "title. The audiobook may still be available."
                 ),
-            }
+            }, {}
         if (book.get("statistics") or {}).get("bookFileCount"):
             return {"success": False, "status": "in_library",
-                    "message": f"{name} is already in the ebook library."}
+                    "message": f"{name} is already in the ebook library."}, {}
     elif local_id:
         book = await _chaptarr_call("GET", f"/api/v1/book/{local_id}")
         if (book.get("statistics") or {}).get("bookFileCount"):
             return {"success": False, "status": "in_library",
-                    "message": f"{name} is already in the audiobook library."}
+                    "message": f"{name} is already in the audiobook library."}, {}
         entry = ledger.load(BOOK_LEDGER).get(str(local_id)) or {}
         if entry.get("state") in ("downloading", "verifying"):
-            return {"success": False, "status": "already_requested", "message": f"{name} is already {entry['state']}."}
+            return {"success": False, "status": "already_requested", "message": f"{name} is already {entry['state']}."}, {}
         if not (book.get("monitored") and book.get("audiobookMonitored")):
             book.update({"monitored": True, "audiobookMonitored": True})
             book = await _chaptarr_call("PUT", f"/api/v1/book/{local_id}", json=book)
@@ -1908,6 +2029,15 @@ async def _request(title: str, foreign_book_id: str, release_title: str | None =
         "alerted_stuck": False,
     }
     ledger.save(BOOK_LEDGER, book_ledger)
+    return None, {"guard": g, "hit": hit, "name": name, "book_id": book_id, "author_id": book.get("authorId")}
+
+
+async def _request(title: str, foreign_book_id: str, release_title: str | None = None,
+                   fmt: str = "audiobook") -> dict:
+    refusal, claim = await _claim(title, foreign_book_id, fmt)
+    if refusal:
+        return refusal
+    g, hit, name, book_id = claim["guard"], claim["hit"], claim["name"], claim["book_id"]
 
     found = await _chaptarr_call("GET", "/api/v1/release", params={"bookId": book_id}) or {}
     # Filtered-out releases can't be grabbed, but they tell "VIP only" apart from "nothing".
@@ -2041,13 +2171,88 @@ async def _request(title: str, foreign_book_id: str, release_title: str | None =
     }
 
 
-async def _force_import(book_id: str, entry: dict, item: dict) -> dict:
-    """Import a blocked download against the book it was grabbed for.
+async def add_torrent(title: str, foreign_book_id: str, torrent_b64: str, fmt: str = "audiobook") -> dict:
+    """Download a .torrent the user picked on MAM themselves, then import it as usual.
+
+    The file is checked before anything is touched, then it goes through the
+    same `_claim` as a MAM search (guard, "already have it", Chaptarr record,
+    ledger), so status, the Kindle send, cancel and retract all work unchanged.
+    MAM is never contacted from here: the user fetched the file, and only the
+    torrent client talks to MAM's tracker.
+    """
+    fmt = book_format(fmt)
+    try:
+        data = base64.b64decode(torrent_b64)
+        info = torrent_info(data)
+    except (binascii.Error, ValueError) as e:
+        return {"success": False, "status": "bad_torrent",
+                "message": f"That isn't a usable .torrent file: {e}. Nothing was added."}
+    if fmt == "ebook" and not torrent_kindle_ready(info["files"]):
+        return {
+            "success": False, "status": "no_kindle_format", "files": info["files"][:10],
+            "message": (
+                f"Not adding \"{info['name']}\": it has no EPUB or PDF, and Amazon's Send to "
+                "Kindle takes nothing else. Nothing was added."
+            ),
+        }
+    async with _request_lock:
+        return await _add_torrent(title, foreign_book_id, data, info, fmt)
+
+
+async def _add_torrent(title: str, foreign_book_id: str, data: bytes, info: dict, fmt: str) -> dict:
+    refusal, claim = await _claim(title, foreign_book_id, fmt)
+    if refusal:
+        return refusal
+    book_id, name = claim["book_id"], claim["name"]
+    # Already there (the user added it by hand, say) is fine: track it rather
+    # than add it twice, and it takes no new MAM slot.
+    adopted = bool(await mam_torrents(info["hash"]))
+    if not adopted:
+        await _qbt_add(data, f"{info['name']}.torrent")
+        # The add call's reply is not trusted: the torrent being there is the answer.
+        if not await mam_torrents(info["hash"]):
+            _record(book_id, {"state": "failed", "reason": "qbittorrent-mam did not take the torrent"})
+            return {"success": False, "status": "add_failed", "book_id": int(book_id),
+                    "message": f"qbittorrent-mam did not take the torrent for {name}. Nothing is downloading."}
+    _record(book_id, {
+        "state": "downloading", "hand_added": True, "torrent_hash": info["hash"],
+        "author_id": claim["author_id"], "grabbed_at": _now_iso(), "reason": None,
+    })
+    how = "was already in qbittorrent-mam and is now tracked" if adopted else "is downloading"
+    return {
+        "success": True, "status": "adopted" if adopted else "added", "book_id": int(book_id),
+        "torrent": {"name": info["name"], "files": len(info["files"])},
+        "message": (
+            f"\"{info['name']}\" {how} as {name} ({fmt}). landible_book_status imports it "
+            "against this book once it finishes."
+        ),
+    }
+
+
+def not_blocklisted(entry: dict) -> str:
+    """Why a wrong book's release could not be blocklisted, truthfully."""
+    if entry.get("hand_added"):
+        return "nothing blocklisted (the torrent was handed in, not grabbed through Chaptarr)"
+    return "release NOT blocklisted (its grab has aged out of Chaptarr's history)"
+
+
+def hand_progress(torrent: dict | None) -> dict | None:
+    """queue_progress's shape for a hand-added torrent, read from qBittorrent."""
+    if not torrent:
+        return None
+    return {"percent": round(100 * (torrent.get("progress") or 0)), "status": torrent.get("state"),
+            "eta": None, "warnings": []}
+
+
+async def _force_import(book_id: str, entry: dict, item: dict,
+                        blocked: str = "Chaptarr refused the import as a different book") -> dict:
+    """Import a finished download against the book it was grabbed for.
 
     Returns ledger updates. `importMode: copy` hardlinks, so the MAM torrent
-    keeps seeding — `move` would break the hit & run rule.
+    keeps seeding — `move` would break the hit & run rule. `item` is Chaptarr's
+    queue item, or for a hand-added torrent the same three fields built from
+    qBittorrent; `blocked` starts the reason when the import can't be done.
     """
-    blocked = "Chaptarr refused the import as a different book"
 
     def skipped(why: str) -> dict:
         """Nothing was imported for THIS grab, so `import_forced_at` must not stand.
@@ -2064,10 +2269,11 @@ async def _force_import(book_id: str, entry: dict, item: dict) -> dict:
     if not grab_token(entry, item):
         return skipped("and the grab has no torrent hash to import it against just once")
     editions = await _chaptarr_call("GET", "/api/v1/edition", params={"bookId": book_id}) or []
-    edition_id = monitored_edition(editions)
+    fmt = entry_format(entry)
+    edition_id = monitored_edition(editions, fmt)
     folder = item.get("outputPath")
     if not (edition_id and folder):
-        missing = "no single monitored audiobook edition" if not edition_id else "no download folder"
+        missing = f"no single monitored {fmt} edition" if not edition_id else "no download folder"
         return skipped(f"and there is {missing} to import it against")
     candidates = await _chaptarr_call("GET", "/api/v1/manualimport", params={"folder": folder}) or []
     files = import_files(candidates, book_id, item.get("authorId"), edition_id)
@@ -2128,8 +2334,7 @@ async def _verify(book_id: str, entry: dict) -> dict:
     # can belong to an earlier grab once this one ages out of the window, and
     # blocklisting that release bans a file that was never the problem.
     grab_history_id = entry.get("grab_history_id")
-    blocklist = ("release blocklisted" if grab_history_id else
-                 "release NOT blocklisted (its grab has aged out of Chaptarr's history)")
+    blocklist = ("release blocklisted" if grab_history_id else not_blocklisted(entry))
     failed = {
         "state": "failed", "content": "mismatch", "content_detail": detail,
         "reason": f"wrong content ({detail}); {blocklist}, library copy removed, torrent still seeding",
@@ -2164,6 +2369,7 @@ async def status(query: str | None) -> dict:
 
     updates: dict[str, dict] = {}
     errors: dict[str, str] = {}
+    progress: dict[str, dict | None] = {}
     for k in live:
         # One book's error is reported on that book; the rest still show. Any
         # exception, not just HTTP: a malformed entry used to raise past this
@@ -2183,6 +2389,18 @@ async def status(query: str | None) -> dict:
             if merged.get("state") == "downloading" and import_blocked(item) and not forced_once(merged, item):
                 u.update(await _force_import(k, merged, item))
                 merged = {**merged, **u}
+            # A handed-in torrent is in a category Chaptarr doesn't watch, so
+            # nothing imports it but this: once qBittorrent has all of it.
+            if merged.get("state") == "downloading" and merged.get("hand_added"):
+                torrent = next(iter(await mam_torrents(merged["torrent_hash"])), None)
+                progress[k] = hand_progress(torrent)
+                if torrent is None:
+                    u["reason"] = "the handed-in torrent is no longer in qbittorrent-mam"
+                elif (torrent.get("progress") or 0) >= 1 and not forced_once(merged):
+                    finished = {"downloadId": merged["torrent_hash"], "outputPath": torrent.get("content_path"),
+                                "authorId": merged.get("author_id")}
+                    u.update(await _force_import(k, merged, finished, blocked="The handed-in torrent finished"))
+                merged = {**merged, **u}
             if merged.get("state") == "verifying":
                 u.update(await _verify(k, merged))
         except Exception as e:
@@ -2201,7 +2419,7 @@ async def status(query: str | None) -> dict:
         ledger.save(BOOK_LEDGER, book_ledger)
 
     books = [
-        slim_entry(k, {**v, **updates.get(k, {})}, queue_progress(queue.get(int(k))))
+        slim_entry(k, {**v, **updates.get(k, {})}, queue_progress(queue.get(int(k))) or progress.get(k))
         for k, v in items.items()
     ]
     for b in books:

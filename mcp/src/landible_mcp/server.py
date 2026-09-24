@@ -230,8 +230,9 @@ async def landible_book_request(
     An ebook lands in the Ebooks library; it does NOT go to a Kindle by itself.
     Send it with landible_book_kindle once `landible_book_status` says `imported`.
 
-    Ebook-only statuses: `no_ebook_record` (Chaptarr's metadata lists the
-    audiobook only — nothing to search for), and `no_kindle_format` (every
+    Ebook-only statuses: `no_ebook_record` (no ebook record to search for; the
+    `message` says whether Chaptarr is still creating them — ask again in a few
+    minutes — or has none for this title), and `no_kindle_format` (every
     release is AZW3 or MOBI, which Amazon refuses; naming one still grabs it
     but it will never reach a Kindle).
 
@@ -271,6 +272,31 @@ async def landible_book_request(
 
 
 @mcp.tool
+async def landible_book_add_torrent(
+    title: str, foreign_book_id: str, torrent_b64: str, format: str = "audiobook",
+) -> dict:
+    """Download a .torrent file the user got from MAM themselves, and import it as that book.
+
+    For when the user has picked a release on MAM by hand, or landible_book_request
+    couldn't find one. CONFIRM THE BOOK WITH THE USER FIRST, as for a request.
+
+    `title` and `foreign_book_id` come from ONE landible_book_search hit: they say
+    which book the torrent IS, and the file is imported against that book. `format`
+    is "audiobook" (default) or "ebook". `torrent_b64` is the .torrent file's bytes,
+    base64-encoded; never fetch a torrent from MAM yourself (MAM rule 1.7).
+
+    Same refusals as landible_book_request (`guard`, `in_library`,
+    `already_requested`, `rejected`, `no_ebook_record`), plus `bad_torrent` (not a
+    .torrent file), `no_kindle_format` (an ebook torrent with no EPUB or PDF) and
+    `add_failed`. Success is `added`, or `adopted` when that torrent was already in
+    qbittorrent-mam (it is tracked, not added twice). Then follow it with
+    landible_book_status, which imports it once it finishes. Relay `message`.
+    """
+    _require_secret()
+    return await books.add_torrent(title, foreign_book_id, torrent_b64, format)
+
+
+@mcp.tool
 async def landible_book_status(query: str | None = None) -> dict:
     """Where's my audiobook? Every requested book with its state, already decided.
 
@@ -278,7 +304,8 @@ async def landible_book_status(query: str | None = None) -> dict:
     On a wrong-content import it blocklists the release and deletes the library
     copy (the torrent keeps seeding), and when Chaptarr has filed a finished
     download under a different book of the same author it re-imports that file
-    against the book it was grabbed for (once per grab). Both only ever
+    against the book it was grabbed for (once per grab); a torrent handed in with
+    landible_book_add_torrent is imported the same way once it finishes. All only ever
     touch books the ledger says were requested here. Don't call it to "just
     look" if that matters — but it is the only way to advance a stuck book.
 

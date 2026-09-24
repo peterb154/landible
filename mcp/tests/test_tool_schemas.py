@@ -9,7 +9,7 @@ import asyncio
 from landible_mcp.server import mcp
 
 EXPECTED = {
-    "landible_book_search", "landible_book_request", "landible_book_status",
+    "landible_book_search", "landible_book_request", "landible_book_add_torrent", "landible_book_status",
     "landible_book_cancel", "landible_book_retract", "landible_book_kindle", "landible_audiobooks",
     "landible_mam_stats", "landible_webhook_list", "landible_webhook_set",
     "landible_webhook_delete", "landible_webhook_test",
