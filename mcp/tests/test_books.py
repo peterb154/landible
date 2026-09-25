@@ -2266,17 +2266,20 @@ def test_a_lookup_that_returns_a_different_author_is_not_added(fake):
     assert book is None and why == "no_author"
 
 
-@pytest.mark.parametrize("author_known, expect", [
+@pytest.mark.parametrize("author_known, enabled, expect", [
     # Now an author missing locally is ADDED, so the only way to still
     # fail here is the metadata source not resolving the name either.
-    (False, "could not add"),           # unresolvable upstream too
-    (True, "no ebook record"),          # author known, but no ebook edition
+    (False, False, "could not add"),         # unresolvable upstream too
+    (True, False, "only just started"),      # just enabled: records may still be coming
+    (True, True, "None of"),                 # enabled long ago: a real miss
 ])
-def test_the_two_ebook_failures_are_reported_as_different_things(fake, author_known, expect):
+def test_the_ebook_failures_are_reported_as_different_things(fake, monkeypatch, author_known, enabled, expect):
     """One message for both would be false half the time — the same shape as
     every other message bug fixed today."""
+    monkeypatch.setattr(books, "EBOOK_RECORD_POLL_S", 0)
     _qbt(fake, [])
     _abs(fake)
+    ebook_fields = books.author_ebook_fields() if enabled else {}
     routes = {
         ("GET", "/api/v1/book/lookup"): [{
             "title": EOE_WANT[0], "foreignBookId": "gr:2574991", "localBookId": "0",
@@ -2284,7 +2287,7 @@ def test_the_two_ebook_failures_are_reported_as_different_things(fake, author_kn
         }],
         ("GET", "/api/v1/author"): ([{"id": 31, "authorName": EOE_WANT[1]}] if author_known else []),
         ("GET", "/api/v1/author/lookup"): [],   # nothing to add either
-        ("GET", "/api/v1/author/31"): {"id": 31, "authorName": EOE_WANT[1]},
+        ("GET", "/api/v1/author/31"): {"id": 31, "authorName": EOE_WANT[1], **ebook_fields},
         ("PUT", "/api/v1/author/31"): {"id": 31, "authorName": EOE_WANT[1]},
         # Author known but only an audiobook record exists for this title.
         ("GET", "/api/v1/book"): [{"id": 9250, "mediaType": "audiobook",
@@ -2799,3 +2802,310 @@ def test_a_correctly_labelled_import_records_no_mismatch(fake):
     assert book["content"] == "ok"
     assert "library lists it as" not in book["summary"]
     assert ledger.load(books.BOOK_LEDGER)["9250"].get("library_mismatch") is None
+
+
+# ---- the ebook-record race (#20) ----
+
+FOUR_WINDS_HIT = {"title": "The Four Winds", "foreignBookId": "gr:79888572", "localBookId": "0",
+                  "author": {"authorName": "Kristin Hannah"}}
+FOUR_WINDS_EBOOK = {"id": 29976, "mediaType": "ebook", "foreignBookId": "hc:259391", "title": "The Four Winds",
+                    "authorId": 43, "monitored": True, "ebookMonitored": True}
+
+
+def _hannah(fake, enabled, book_reads):
+    """Kristin Hannah in Chaptarr; `book_reads` is what each GET /book returns, in turn."""
+    reads = iter(book_reads)
+    return fake("_chaptarr", {
+        ("GET", "/api/v1/author"): [{"id": 43, "authorName": "Kristin Hannah"}],
+        ("GET", "/api/v1/author/43"): {"id": 43, **(books.author_ebook_fields() if enabled else {})},
+        ("PUT", "/api/v1/author/43"): {"id": 43},
+        ("GET", "/api/v1/book"): lambda request: next(reads),
+    })
+
+
+def test_the_ebook_record_is_waited_for_after_enabling_the_author(fake, monkeypatch):
+    """The Four Winds: refused as `no_ebook_record`, and Chaptarr created the
+    record seconds later. Enabling the author starts a background refresh."""
+    monkeypatch.setattr(books, "EBOOK_RECORD_POLL_S", 0)
+    audio_only = [{"id": 12514, "mediaType": "audiobook", "title": "The Four Winds"}]
+    chaptarr = _hannah(fake, enabled=False, book_reads=[audio_only, audio_only, [*audio_only, FOUR_WINDS_EBOOK]])
+
+    book, why = asyncio.run(books._ebook_book_record(FOUR_WINDS_HIT))
+
+    assert why is None and book["id"] == 29976
+    assert [c[1] for c in chaptarr.calls].count("/api/v1/book") == 3
+
+
+def test_an_author_enabled_long_ago_is_not_waited_for(fake, monkeypatch):
+    monkeypatch.setattr(books, "EBOOK_RECORD_POLL_S", 60)   # a wait would hang the test
+    chaptarr = _hannah(fake, enabled=True, book_reads=[[]])
+
+    book, why = asyncio.run(books._ebook_book_record(FOUR_WINDS_HIT))
+
+    assert book is None and why == "no_record"
+    assert [c[1] for c in chaptarr.calls].count("/api/v1/book") == 1
+
+
+def test_records_that_never_come_say_so_after_the_wait(fake, monkeypatch):
+    monkeypatch.setattr(books, "EBOOK_RECORD_POLL_S", 0)
+    chaptarr = _hannah(fake, enabled=False, book_reads=[[]] * books.EBOOK_RECORD_POLLS)
+
+    book, why = asyncio.run(books._ebook_book_record(FOUR_WINDS_HIT))
+
+    assert book is None and why == "records_pending"
+    assert [c[1] for c in chaptarr.calls].count("/api/v1/book") == books.EBOOK_RECORD_POLLS
+
+
+# The real edition list's shape for The Four Winds' ebook record (55 editions, one monitored).
+FOUR_WINDS_EDITIONS = [
+    {"id": 74165, "bookId": 29976, "monitored": True, "isEbook": True, "format": "ebook"},
+    {"id": 74166, "bookId": 29976, "monitored": False, "isEbook": True, "format": "ebook"},
+]
+
+
+def test_an_ebook_record_has_an_ebook_edition_to_import_against():
+    assert books.monitored_edition(FOUR_WINDS_EDITIONS, "ebook") == 74165
+    assert books.monitored_edition(FOUR_WINDS_EDITIONS) is None
+    assert books.monitored_edition(MICE_EDITIONS) == 14983
+
+
+# ---- a .torrent handed in (#20) ----
+
+def _bencode(v):
+    if isinstance(v, int):
+        return b"i%de" % v
+    if isinstance(v, str):
+        v = v.encode()
+    if isinstance(v, bytes):
+        return b"%d:%s" % (len(v), v)
+    if isinstance(v, list):
+        return b"l" + b"".join(_bencode(x) for x in v) + b"e"
+    return b"d" + b"".join(_bencode(k) + _bencode(v[k]) for k in sorted(v)) + b"e"
+
+
+EPUB_INFO = {"name": "The Four Winds - Kristin Hannah.epub", "length": 1234, "piece length": 16384, "pieces": b"x" * 20}
+EPUB_TORRENT = _bencode({"announce": "https://tracker.invalid/announce", "info": EPUB_INFO})
+EPUB_HASH = __import__("hashlib").sha1(_bencode(EPUB_INFO)).hexdigest()
+EPUB_B64 = __import__("base64").b64encode(EPUB_TORRENT).decode()
+EPUB_PATH = f"{books.MAM_ROOT}/The Four Winds - Kristin Hannah.epub"
+
+
+def test_torrent_info_reads_the_hash_and_files():
+    info = books.torrent_info(EPUB_TORRENT)
+    assert info == {"hash": EPUB_HASH, "name": EPUB_INFO["name"], "files": [EPUB_INFO["name"]]}
+
+    multi = _bencode({"info": {"name": "Book", "piece length": 1, "pieces": b"",
+                               "files": [{"length": 1, "path": ["01.mp3"]}, {"length": 1, "path": ["art", "cover.jpg"]}]}})
+    assert books.torrent_info(multi)["files"] == ["01.mp3", "art/cover.jpg"]
+
+
+@pytest.mark.parametrize("junk", [
+    b"", b"<html>login</html>", EPUB_TORRENT[:40], _bencode({"announce": "x"}),
+    b"d4:infodle1:xeee",                                  # a list as a dictionary key
+    b"d4:info" + b"l" * 5000 + b"e" * 5000 + b"e",       # nesting deep enough to recurse out
+])
+def test_anything_but_a_torrent_is_refused(junk):
+    with pytest.raises(ValueError):
+        books.torrent_info(junk)
+
+
+def test_a_bad_torrent_touches_nothing(fake):
+    # Every backend is a refusing fake, so any call would fail the test.
+    result = asyncio.run(books.add_torrent("The Four Winds", "gr:79888572", "bm90IGEgdG9ycmVudA==", "ebook"))
+    assert result["status"] == "bad_torrent"
+
+
+def test_an_ebook_torrent_amazon_would_refuse_touches_nothing(fake):
+    azw3 = __import__("base64").b64encode(_bencode({"info": {**EPUB_INFO, "name": "The Four Winds.azw3"}})).decode()
+    result = asyncio.run(books.add_torrent("The Four Winds", "gr:79888572", azw3, "ebook"))
+    assert result["status"] == "no_kindle_format"
+
+
+def _hand_qbt(fake, present=False, takes=True):
+    """qbittorrent-mam: `present` = the torrent is there before the add; `takes` = the add works."""
+    state = {"there": present, "added": []}
+    torrent = {"hash": EPUB_HASH, "name": EPUB_INFO["name"], "progress": 0, "state": "downloading",
+               "content_path": EPUB_PATH, "seeding_time": 0}
+
+    def info(request):
+        assert request.url.params.get("hashes") in (None, EPUB_HASH)
+        return [torrent] if state["there"] else []
+
+    def add(request):
+        state["added"].append(request.content)
+        state["there"] = takes
+        return httpx.Response(200 if takes else 415, text="Ok." if takes else "Fails.")
+
+    api = fake("_qbt_mam", {
+        ("POST", "/api/v2/auth/login"): httpx.Response(204),
+        ("GET", "/api/v2/torrents/info"): info,
+        ("POST", "/api/v2/torrents/createCategory"): httpx.Response(409),
+        ("POST", "/api/v2/torrents/add"): add,
+    })
+    return api, state
+
+
+def _four_winds_chaptarr(fake):
+    return fake("_chaptarr", {
+        ("GET", "/api/v1/book/lookup"): [FOUR_WINDS_HIT],
+        ("GET", "/api/v1/author"): [{"id": 43, "authorName": "Kristin Hannah"}],
+        ("GET", "/api/v1/author/43"): {"id": 43, **books.author_ebook_fields()},
+        ("GET", "/api/v1/book"): [FOUR_WINDS_EBOOK],
+    })
+
+
+def test_a_handed_in_ebook_is_added_seeding_for_ever_and_tracked(fake):
+    qbt, state = _hand_qbt(fake)
+    _abs(fake)
+    chaptarr = _four_winds_chaptarr(fake)
+
+    result = asyncio.run(books.add_torrent("The Four Winds", "gr:79888572", EPUB_B64, "ebook"))
+
+    assert result["status"] == "added" and result["book_id"] == 29976
+    (form,) = state["added"]
+    assert EPUB_TORRENT in form                                   # the file itself went up
+    for field, value in (("category", books.HAND_CATEGORY), ("savepath", books.MAM_ROOT),
+                         ("ratioLimit", "-1"), ("seedingTimeLimit", "-1")):
+        assert b'name="%s"\r\n\r\n%s\r\n' % (field.encode(), value.encode()) in form
+    assert chaptarr.writes() == []                                # nothing searched or grabbed in Chaptarr
+    entry = ledger.load(books.BOOK_LEDGER)["29976"]
+    assert entry["state"] == "downloading" and entry["hand_added"] and entry["torrent_hash"] == EPUB_HASH
+    assert entry["format"] == "ebook" and entry["author_id"] == 43
+
+
+def test_a_torrent_already_in_the_client_is_tracked_not_added_again(fake):
+    qbt, state = _hand_qbt(fake, present=True)
+    _abs(fake)
+    _four_winds_chaptarr(fake)
+
+    result = asyncio.run(books.add_torrent("The Four Winds", "gr:79888572", EPUB_B64, "ebook"))
+
+    assert result["status"] == "adopted"
+    assert state["added"] == [] and not [c for c in qbt.calls if c[1] == "/api/v2/torrents/createCategory"]
+    assert ledger.load(books.BOOK_LEDGER)["29976"]["state"] == "downloading"
+
+
+def test_an_add_the_client_did_not_take_is_a_failure(fake):
+    _hand_qbt(fake, takes=False)
+    _abs(fake)
+    _four_winds_chaptarr(fake)
+
+    result = asyncio.run(books.add_torrent("The Four Winds", "gr:79888572", EPUB_B64, "ebook"))
+
+    assert result["status"] == "add_failed"
+    assert ledger.load(books.BOOK_LEDGER)["29976"]["state"] == "failed"
+
+
+def test_a_handed_in_torrent_is_refused_at_the_cap_before_anything_is_added(fake):
+    _qbt(fake, [_torrent(progress=0.5)] * books.MAM_UNSATISFIED_CAP)   # no add route: an add would fail
+
+    result = asyncio.run(books.add_torrent("The Four Winds", "gr:79888572", EPUB_B64, "ebook"))
+
+    assert result["status"] == "guard"
+
+
+def _hand_downloading(**extra):
+    ledger.save(books.BOOK_LEDGER, {"29976": {
+        "title": "The Four Winds", "author": "Kristin Hannah", "format": "ebook", "state": "downloading",
+        "foreign_book_id": "gr:79888572", "requested_at": "2026-09-24T16:00:00Z", "hand_added": True,
+        "torrent_hash": EPUB_HASH, "author_id": 43, **extra,
+    }})
+
+
+def _hand_status_qbt(fake, progress):
+    """`progress` None = the torrent is gone from the client."""
+    if progress is None:
+        return _qbt(fake, [])
+    return _qbt(fake, [{"hash": EPUB_HASH, "progress": progress, "content_path": EPUB_PATH, "seeding_time": 0,
+                        "state": "uploading" if progress >= 1 else "downloading"}])
+
+
+EPUB_CANDIDATE = {"path": EPUB_PATH, "additionalFile": False, "indexerFlags": 0,
+                  "quality": {"quality": {"id": 3, "name": "EPUB"}, "revision": {"version": 1}}}
+
+
+def test_a_finished_handed_in_torrent_is_imported_against_its_book(fake):
+    _hand_downloading()
+    _hand_status_qbt(fake, 1.0)
+    manual_folders = []
+    chaptarr = fake("_chaptarr", {
+        ("GET", "/api/v1/queue"): {"records": []},     # Chaptarr doesn't watch this category
+        ("GET", "/api/v1/history"): {"records": []},
+        ("GET", "/api/v1/edition"): FOUR_WINDS_EDITIONS,
+        ("GET", "/api/v1/manualimport"): lambda r: manual_folders.append(r.url.params["folder"]) or [EPUB_CANDIDATE],
+        ("POST", "/api/v1/command"): {"id": 1},
+    })
+
+    book = asyncio.run(books.status(None))["books"][0]
+
+    # The torrent's own path, never the whole MAM folder (21 files live).
+    assert manual_folders == [EPUB_PATH]
+    (method, path, body), = chaptarr.writes()
+    assert body["name"] == "ManualImport" and body["importMode"] == "copy"
+    assert body["files"] == [{"path": EPUB_PATH, "authorId": 43, "bookId": 29976, "editionId": 74165,
+                              "quality": EPUB_CANDIDATE["quality"], "indexerFlags": 0,
+                              "disableReleaseSwitching": True}]
+    assert "handed-in torrent has finished" in book["summary"]
+    assert ledger.load(books.BOOK_LEDGER)["29976"]["import_forced_for"] == EPUB_HASH
+
+
+def test_a_handed_in_import_is_sent_once_not_every_poll(fake):
+    _hand_downloading(import_forced_for=EPUB_HASH, import_forced_at="2026-09-24T16:05:00Z")
+    _hand_status_qbt(fake, 1.0)
+    chaptarr = fake("_chaptarr", {
+        ("GET", "/api/v1/queue"): {"records": []},
+        ("GET", "/api/v1/history"): {"records": []},
+    })
+
+    asyncio.run(books.status(None))
+
+    assert chaptarr.writes() == []
+
+
+def test_a_handed_in_torrent_still_downloading_shows_its_progress(fake):
+    _hand_downloading()
+    _hand_status_qbt(fake, 0.5)
+    chaptarr = fake("_chaptarr", {
+        ("GET", "/api/v1/queue"): {"records": []},
+        ("GET", "/api/v1/history"): {"records": []},
+    })
+
+    book = asyncio.run(books.status(None))["books"][0]
+
+    assert chaptarr.writes() == []
+    assert book["summary"].startswith("Downloading from MAM: 50%")
+
+
+def test_a_handed_in_torrent_gone_from_the_client_says_so(fake):
+    _hand_downloading()
+    _hand_status_qbt(fake, None)
+    fake("_chaptarr", {
+        ("GET", "/api/v1/queue"): {"records": []},
+        ("GET", "/api/v1/history"): {"records": []},
+    })
+
+    book = asyncio.run(books.status(None))["books"][0]
+
+    assert "no longer in qbittorrent-mam" in book["summary"]
+
+
+def test_a_handed_in_import_then_settles_like_any_other(fake):
+    """After the ManualImport, Chaptarr's history carries it the rest of the way."""
+    _hand_downloading(import_forced_for=EPUB_HASH, import_forced_at="2026-09-24T16:05:00Z")
+    _hand_status_qbt(fake, 1.0)
+    fake("_chaptarr", {
+        ("GET", "/api/v1/queue"): {"records": []},
+        ("GET", "/api/v1/history"): {"records": [{
+            "eventType": "bookFileImported", "date": "2026-09-24T16:05:30Z",
+            "data": {"importedPath": "/music/books/ebooks/Kristin Hannah/The Four Winds/The Four Winds.pdf", "fileId": "901"},
+        }]},
+    })
+
+    book = asyncio.run(books.status(None))["books"][0]
+
+    assert book["state"] == "imported" and book["content"] == "unverified"
+
+
+def test_retracting_a_handed_in_book_does_not_blame_an_aged_out_grab():
+    assert "handed in" in books.not_blocklisted({"hand_added": True})
+    assert "aged out" in books.not_blocklisted({})

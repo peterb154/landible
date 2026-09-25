@@ -147,6 +147,10 @@ third is invisible from Chaptarr's side:
    audiobook records gains a similar number of ebook ones). The request code
    does this per request and it is idempotent, so it is not a manual step.
    Without `ebookMonitorNewItems: none` every new ebook record would be "wanted".
+   **The records arrive in a background refresh**, seconds after the PUT, so
+   right after enabling an author the request re-reads the book list for up to
+   a minute (`EBOOK_RECORD_POLLS` × `EBOOK_RECORD_POLL_S`). An author enabled
+   long ago is read once: a miss there is a real miss.
 3. **The indexer must ask for the ebook category.** With `categories: [3030]`
    (audiobooks only) Chaptarr sends that even for ebook records: it gets
    audiobooks back, discards them as wrong-format and reports 0 releases. It
@@ -389,7 +393,7 @@ Using it (the MCP tools make the same calls):
 
 `landible_book_search` → `landible_book_request` → `landible_book_status`, plus
 `landible_audiobooks` for the library, `landible_book_cancel`, `landible_book_retract`,
-`landible_book_kindle` and `landible_mam_stats`. Code:
+`landible_book_kindle`, `landible_book_add_torrent` and `landible_mam_stats`. Code:
 `mcp/src/landible_mcp/books.py`. Requests are recorded in the `books.json`
 ledger; the MCP is its only writer.
 
@@ -399,7 +403,8 @@ ledger; the MCP is its only writer.
   below its real limit (`unsat_limit` in `landible_mam_stats`: 20 for new
   members, 50 at User class). **Raise the cap in `mcp/.env` when `unsat_limit`
   rises**, not on a date: promotion is earned (4 weeks, 25 GiB up, ratio 2.0).
-  The MCP only reads qbittorrent-mam; it never removes or pauses a torrent.
+  The MCP only reads qbittorrent-mam and adds handed-in torrents (below); it
+  never removes or pauses a torrent.
 - **One request at a time:** requests are serialized (guard → grab), so
   parallel asks can't all slip in under the cap.
 - **What gets grabbed:** the first release Chaptarr approves that isn't
@@ -514,6 +519,18 @@ ledger; the MCP is its only writer.
   delete the library copy (`DELETE /bookfile/{id}`, a hardlink). The torrent
   keeps seeding. `retracted` is handled by the same three consumers as
   `cancelled`.
+- **Handing the assistant a torrent (`landible_book_add_torrent`):** for a
+  release the user picked on MAM by hand. The user downloads the `.torrent`
+  (never the assistant: rule 1.7), picks the book with `landible_book_search`,
+  and the assistant passes the file base64-encoded. It goes through the same
+  guard and checks as a request, then into qbittorrent-mam in category
+  `landible-hand` at `/music/books/mam`, with unlimited ratio and seeding time.
+  Chaptarr doesn't watch that category, so it can't file the download under the
+  wrong book; `landible_book_status` finds the torrent by infohash and, once it
+  is complete, sends Chaptarr a `ManualImport` (`copy`, i.e. hardlink) of
+  exactly the torrent's `content_path` against the requested book and its
+  monitored edition in that format. From there it settles like any other
+  request. A torrent already in the client is tracked, not added twice.
 - **ABS user `mcp`:** non-admin, key in `mcp/.env` as `ABS_API_KEY`.
 
 ## Push notifications
