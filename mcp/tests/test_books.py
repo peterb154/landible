@@ -2899,7 +2899,11 @@ def test_torrent_info_reads_the_hash_and_files():
     assert books.torrent_info(multi)["files"] == ["01.mp3", "art/cover.jpg"]
 
 
-@pytest.mark.parametrize("junk", [b"", b"<html>login</html>", EPUB_TORRENT[:40], _bencode({"announce": "x"})])
+@pytest.mark.parametrize("junk", [
+    b"", b"<html>login</html>", EPUB_TORRENT[:40], _bencode({"announce": "x"}),
+    b"d4:infodle1:xeee",                                  # a list as a dictionary key
+    b"d4:info" + b"l" * 5000 + b"e" * 5000 + b"e",       # nesting deep enough to recurse out
+])
 def test_anything_but_a_torrent_is_refused(junk):
     with pytest.raises(ValueError):
         books.torrent_info(junk)
@@ -2930,7 +2934,7 @@ def _hand_qbt(fake, present=False, takes=True):
     def add(request):
         state["added"].append(request.content)
         state["there"] = takes
-        return httpx.Response(200, text="Ok.")
+        return httpx.Response(200 if takes else 415, text="Ok." if takes else "Fails.")
 
     api = fake("_qbt_mam", {
         ("POST", "/api/v2/auth/login"): httpx.Response(204),

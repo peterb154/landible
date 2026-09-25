@@ -971,8 +971,9 @@ def torrent_info(data: bytes) -> dict:
             value, i = _bdecode(data, i)
             if key == b"info":
                 info, raw = value, data[start:i]
-    except (IndexError, ValueError) as e:
-        raise ValueError(f"not a valid .torrent file ({e})") from None
+    # TypeError: a list as a dictionary key; RecursionError: absurd nesting.
+    except (IndexError, ValueError, TypeError, RecursionError) as e:
+        raise ValueError(f"not a valid .torrent file ({type(e).__name__}: {e})") from None
     if not isinstance(info, dict) or b"name" not in info:
         raise ValueError("not a valid .torrent file (no info dictionary)")
     name = info[b"name"].decode("utf-8", "replace")
@@ -2208,7 +2209,12 @@ async def _add_torrent(title: str, foreign_book_id: str, data: bytes, info: dict
     # than add it twice, and it takes no new MAM slot.
     adopted = bool(await mam_torrents(info["hash"]))
     if not adopted:
-        await _qbt_add(data, f"{info['name']}.torrent")
+        try:
+            await _qbt_add(data, f"{info['name']}.torrent")
+        except httpx.HTTPStatusError:
+            # qBt refusing the file (415) must not leave the entry `requested`:
+            # the check below records it as failed and says so.
+            traceback.print_exc()
         # The add call's reply is not trusted: the torrent being there is the answer.
         if not await mam_torrents(info["hash"]):
             _record(book_id, {"state": "failed", "reason": "qbittorrent-mam did not take the torrent"})
